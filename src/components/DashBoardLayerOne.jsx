@@ -30,10 +30,10 @@ const DashBoardLayerOne = () => {
         <TopPerformerOne />
 
         {/* TopCountries */}
-        <TopCountries />
+        {/* <TopCountries /> */}
 
         {/* GeneratedContent */}
-        <GeneratedContent />
+        {/* <GeneratedContent /> */}
       </section>
     </>
   );

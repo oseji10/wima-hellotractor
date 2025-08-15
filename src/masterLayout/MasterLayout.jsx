@@ -214,7 +214,7 @@ const MasterLayout = ({ children }) => {
         <div className="sidebar-menu-area">
           <ul className="sidebar-menu" id="sidebar-menu">
             <li className="">
-              <Link href="#">
+              <Link href="/dashboard">
                 <Icon
                   icon="solar:home-smile-angle-outline"
                   className="menu-icon"
@@ -548,10 +548,30 @@ const MasterLayout = ({ children }) => {
              <li>
               <Link href="/dashboard/investors">
                 <Icon
-                  icon="arcticons:invest"
+                  icon="material-symbols-light:money-bag-outline"
                   className="menu-icon"
                 />
                 <span>Investors</span>
+              </Link>
+            </li>
+
+            <li>
+              <Link href="/dashboard/memberships">
+                <Icon
+                  icon="cil:badge"
+                  className="menu-icon"
+                />
+                <span>Memberships</span>
+              </Link>
+            </li>
+
+             <li>
+              <Link href="/dashboard/services">
+                <Icon
+                  icon="vaadin:handshake"
+                  className="menu-icon"
+                />
+                <span>Services</span>
               </Link>
             </li>
 
@@ -579,7 +599,7 @@ const MasterLayout = ({ children }) => {
              <li>
               <Link href="/dashboard/equipment">
                 <Icon
-                  icon="arcticons:booking"
+                  icon="majesticons:clock-line"
                   className="menu-icon"
                 />
                 <span>Bookings</span>
@@ -616,8 +636,16 @@ const MasterLayout = ({ children }) => {
               </Link>
             </li>
 
+
+            <li>
+              <Link href="/dashboard/analytics">
+                <Icon icon="solar:pie-chart-outline" className="menu-icon" />
+                <span>Analytics</span>
+              </Link>
+            </li>
+
             {/* Forms Dropdown */}
-            <li className="dropdown">
+            {/* <li className="dropdown">
               <Link href="#">
                 <Icon icon="heroicons:document" className="menu-icon" />
                 <span>Forms</span>
@@ -660,10 +688,10 @@ const MasterLayout = ({ children }) => {
                   </Link>
                 </li>
               </ul>
-            </li>
+            </li> */}
 
             {/* Table Dropdown */}
-            <li className="dropdown">
+            {/* <li className="dropdown">
               <Link href="#">
                 <Icon icon="mingcute:storage-line" className="menu-icon" />
                 <span>Table</span>
@@ -688,10 +716,10 @@ const MasterLayout = ({ children }) => {
                   </Link>
                 </li>
               </ul>
-            </li>
+            </li> */}
 
             {/* Chart Dropdown */}
-            <li className="dropdown">
+            {/* <li className="dropdown">
               <Link href="#">
                 <Icon icon="solar:pie-chart-outline" className="menu-icon" />
                 <span>Chart</span>
@@ -725,9 +753,9 @@ const MasterLayout = ({ children }) => {
                   </Link>
                 </li>
               </ul>
-            </li>
+            </li> */}
 
-            <li>
+            {/* <li>
               <Link
                 href="/widgets"
                 className={pathname === "/widgets" ? "active-page" : ""}
@@ -735,10 +763,10 @@ const MasterLayout = ({ children }) => {
                 <Icon icon="fe:vector" className="menu-icon" />
                 <span>Widgets</span>
               </Link>
-            </li>
+            </li> */}
 
             {/* Users Dropdown */}
-            <li className="dropdown">
+            {/* <li className="dropdown">
               <Link href="#">
                 <Icon
                   icon="flowbite:users-group-outline"
@@ -784,10 +812,10 @@ const MasterLayout = ({ children }) => {
                   </Link>
                 </li>
               </ul>
-            </li>
+            </li> */}
 
             {/* Role & Access Dropdown */}
-            <li className="dropdown">
+            {/* <li className="dropdown">
               <Link href="#">
                 <i className="ri-user-settings-line" />
                 <span>Role & Access</span>
@@ -812,12 +840,12 @@ const MasterLayout = ({ children }) => {
                   </Link>
                 </li>
               </ul>
-            </li>
+            </li> */}
 
-            <li className="sidebar-menu-group-title">Application</li>
+            {/* <li className="sidebar-menu-group-title">Application</li> */}
 
             {/* Authentication Dropdown */}
-            <li className="dropdown">
+            {/* <li className="dropdown">
               <Link href="#">
                 <Icon icon="simple-line-icons:vector" className="menu-icon" />
                 <span>Authentication</span>
@@ -851,9 +879,9 @@ const MasterLayout = ({ children }) => {
                   </Link>
                 </li>
               </ul>
-            </li>
+            </li> */}
 
-            <li className="dropdown">
+            {/* <li className="dropdown">
               <Link href="#">
                 <Icon
                   icon="flowbite:users-group-outline"
@@ -899,8 +927,8 @@ const MasterLayout = ({ children }) => {
                   </Link>
                 </li>
               </ul>
-            </li>
-            <li>
+            </li> */}
+            {/* <li>
               <Link
                 href="/pricing"
                 className={pathname === "/pricing" ? "active-page" : ""}
@@ -911,10 +939,10 @@ const MasterLayout = ({ children }) => {
                 />
                 <span>Pricing</span>
               </Link>
-            </li>
+            </li> */}
 
             {/* Blog */}
-            <li className="dropdown">
+            {/* <li className="dropdown">
               <Link href="#">
                 <Icon
                   icon="flowbite:users-group-outline"
@@ -951,9 +979,9 @@ const MasterLayout = ({ children }) => {
                   </Link>
                 </li>
               </ul>
-            </li>
+            </li> */}
 
-            <li>
+            {/* <li>
               <Link
                 href="/testimonials"
                 className={pathname === "/testimonials" ? "active-page" : ""}
@@ -961,8 +989,8 @@ const MasterLayout = ({ children }) => {
                 <Icon icon="ri-star-line" className="menu-icon" />
                 <span>Testimonials</span>
               </Link>
-            </li>
-            <li>
+            </li> */}
+            {/* <li>
               <Link
                 href="/faq"
                 className={pathname === "/faq" ? "active-page" : ""}
@@ -973,8 +1001,8 @@ const MasterLayout = ({ children }) => {
                 />
                 <span>FAQs.</span>
               </Link>
-            </li>
-            <li>
+            </li> */}
+            {/* <li>
               <Link
                 href="/error"
                 className={pathname === "/error" ? "active-page" : ""}
@@ -982,8 +1010,8 @@ const MasterLayout = ({ children }) => {
                 <Icon icon="streamline:straight-face" className="menu-icon" />
                 <span>404</span>
               </Link>
-            </li>
-            <li>
+            </li> */}
+            {/* <li>
               <Link
                 href="/terms-condition"
                 className={pathname === "/terms-condition" ? "active-page" : ""}
@@ -991,8 +1019,8 @@ const MasterLayout = ({ children }) => {
                 <Icon icon="octicon:info-24" className="menu-icon" />
                 <span>Terms & Conditions</span>
               </Link>
-            </li>
-            <li>
+            </li> */}
+            {/* <li>
               <Link
                 href="/coming-soon"
                 className={pathname === "/coming-soon" ? "active-page" : ""}
@@ -1000,8 +1028,8 @@ const MasterLayout = ({ children }) => {
                 <i className="ri-rocket-line menu-icon"></i>
                 <span>Coming Soon</span>
               </Link>
-            </li>
-            <li>
+            </li> */}
+            {/* <li>
               <Link
                 href="/access-denied"
                 className={pathname === "/access-denied" ? "active-page" : ""}
@@ -1027,10 +1055,10 @@ const MasterLayout = ({ children }) => {
                 <i className="ri-checkbox-multiple-blank-line menu-icon"></i>
                 <span>Blank Page</span>
               </Link>
-            </li>
+            </li> */}
 
             {/* Settings Dropdown */}
-            <li className="dropdown">
+            {/* <li className="dropdown">
               <Link href="#">
                 <Icon
                   icon="icon-park-outline:setting-two"
@@ -1103,7 +1131,7 @@ const MasterLayout = ({ children }) => {
                   </Link>
                 </li>
               </ul>
-            </li>
+            </li> */}
           </ul>
         </div>
       </aside>
@@ -1156,7 +1184,7 @@ const MasterLayout = ({ children }) => {
                     data-bs-toggle="dropdown"
                   >
                     <img
-                      src="assets/images/profile.jpg"
+                      src="/assets/images/profile.jpg"
                       alt="image_user"
                       className="w-40-px h-40-px object-fit-cover rounded-circle"
                     />

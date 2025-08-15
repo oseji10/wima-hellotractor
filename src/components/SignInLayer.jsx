@@ -8,151 +8,176 @@ import Image from "next/image";
 
 const SignInLayer = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState(null);
-    const [successMessage, setSuccessMessage] = useState(null);
-    const router = useRouter();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const router = useRouter();
 
-    const submitForm = async (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
+  const submitForm = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/signin`,
+        { username, password },
+        { withCredentials: true }
+      );
+      const {
+        message,
+        firstName,
+        lastName,
+        email,
+        phoneNumber,
+        role,
+        access_token,
+      } = response.data;
+
+      const userData = {
+        firstName,
+        lastName,
+        email,
+        phoneNumber,
+        role,
+        access_token,
+      };
+
+      localStorage.setItem('user', JSON.stringify(userData));
+      setSuccessMessage('Login successful! Redirecting...');
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 2000);
+    } catch (error) {
+      console.error('Login failed:', error);
+      setError(error.response?.data?.message || 'Invalid username or password');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (error || successMessage) {
+      const timer = setTimeout(() => {
         setError(null);
         setSuccessMessage(null);
-
-        try {
-            const response = await axios.post(
-                `${process.env.NEXT_PUBLIC_API_URL}/signin`,
-                { username, password },
-                { withCredentials: true }
-            );
-            // Extract the data from the response
-            const {
-                message,
-                firstName,
-                lastName,
-                email,
-                phoneNumber,
-                role,
-                access_token,
-            } = response.data;
-
-            const userData = {
-                firstName,
-                lastName,
-                email,
-                phoneNumber,
-                role,
-                access_token,
-                
-            };
-
-            // Save to localStorage as a JSON string
-            localStorage.setItem('user', JSON.stringify(userData));
-
-            // Set success message
-            setSuccessMessage('Login successful!');
-            // Delay redirect to show success message
-            setTimeout(() => {
-                router.push('/dashboard');
-            }, 2000);
-        } catch (error) {
-            console.error('Login failed:', error);
-            setError('Invalid username or password');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    // Clear messages after 3 seconds
-    useEffect(() => {
-        if (error || successMessage) {
-            const timer = setTimeout(() => {
-                setError(null);
-                setSuccessMessage(null);
-            }, 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [error, successMessage]);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, successMessage]);
     
   return (
-    <section className='auth bg-base d-flex flex-wrap'>
-      <div className='auth-left d-lg-block d-none'>
-        <div className='d-flex align-items-center flex-column h-1vh justify-content-center'>
-          <img src='assets/images/hellotractor-bg.png' alt='' />
-        </div>
-      </div>
-      <div className='auth-right py-32 px-24 d-flex flex-column justify-content-center'>
-        <div className='max-w-464-px mx-auto w-100'>
-          <div>
-            <Link href='/' className='mb-40 max-w-290-px'>
-              <Image src="assets/images/wima-logo.svg" alt="Home Icon" width={300} height={70} />
+    <section className='auth-container'>
+      {/* Background Image - Hidden on mobile */}
+      <div className='auth-background' />
+
+      {/* Form Container */}
+      <div className='auth-form'>
+        <div className='form-wrapper'>
+          {/* Enhanced Message Alerts */}
+          <div className="alert-container">
+            {error && (
+              <div className="alert error">
+                <Icon 
+                  icon="material-symbols:error-outline" 
+                  className="alert-icon error" 
+                />
+                <p className="alert-message error">{error}</p>
+              </div>
+            )}
+            {successMessage && (
+              <div className="alert success">
+                <Icon 
+                  icon="clarity:success-standard-line" 
+                  className="alert-icon success" 
+                />
+                <p className="alert-message success">{successMessage}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="form-header">
+            <Link href='/' className='logo-link'>
+              <Image 
+                src="/assets/images/wima-logo.svg" 
+                alt="Home Icon" 
+                width={300} 
+                height={70} 
+                className="logo-image"
+              />
             </Link>
-            <h4 className='mb-12'>Sign In to your Account</h4>
-            <p className='mb-32 text-secondary-light text-lg'>
-              Welcome back! please enter your detail
+            <h4 className='form-title'>Sign In to your Account</h4>
+            <p className='form-subtitle'>
+              Welcome back! Please enter your details
             </p>
           </div>
+
           <form onSubmit={submitForm}>
-            <div className='icon-field mb-16'>
-              <span className='icon top-50 translate-middle-y'>
+            <div className='input-field'>
+              <span className='input-icon'>
                 <Icon icon='mage:email' />
               </span>
               <input
                 type='text'
-                className='form-control h-56-px bg-neutral-50 radius-12'
+                className='form-input'
                 placeholder='Email or Phone Number'
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={isSubmitting}
+                required
               />
             </div>
-            <div className='position-relative mb-20'>
-              <div className='icon-field'>
-                <span className='icon top-50 translate-middle-y'>
-                  <Icon icon='solar:lock-password-outline' />
-                </span>
-                <input
-                  type='password'
-                  className='form-control h-56-px bg-neutral-50 radius-12'
-                  id='your-password'
-                  placeholder='Password'
-                  value={password}
+
+            <div className='input-field password-field'>
+              <span className='input-icon'>
+                <Icon icon='solar:lock-password-outline' />
+              </span>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className='form-input'
+                id='your-password'
+                placeholder='Password'
+                value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isSubmitting}
-                />
-              </div>
-              <span
-                className='toggle-password ri-eye-line cursor-pointer position-absolute end-0 top-50 translate-middle-y me-16 text-secondary-light'
-                data-toggle='#your-password'
+                required
               />
+              <button
+                type="button"
+                className='password-toggle'
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                <Icon icon={showPassword ? 'ri:eye-off-line' : 'ri:eye-line'} />
+              </button>
             </div>
-            <div className=''>
-              <div className='d-flex justify-content-between gap-2'>
-                <div className='form-check style-check d-flex align-items-center'>
-                  <input
-                    className='form-check-input border border-neutral-300'
-                    type='checkbox'
-                    defaultValue=''
-                    id='remeber'
-                  />
-                  <label className='form-check-label' htmlFor='remeber'>
-                    Remember me{" "}
-                  </label>
-                </div>
-                <Link href='#' className='text-primary-600 fw-medium'>
-                  Forgot Password?
-                </Link>
+
+            <div className='form-options'>
+              <div className='remember-me'>
+                <input
+                  className='remember-checkbox'
+                  type='checkbox'
+                  id='remember'
+                />
+                <label htmlFor='remember'>
+                  Remember me
+                </label>
               </div>
+              <Link href='#' className='forgot-password'>
+                Forgot Password?
+              </Link>
             </div>
+
             <button
-                type="submit"
-                className="btn btn-primary text-sm btn-sm px-12 py-16 w-100 radius-12 mt-32"
-                disabled={isSubmitting}
+              type="submit"
+              className="submit-button"
+              disabled={isSubmitting}
             >
-                {isSubmitting ? (
+              {isSubmitting ? (
                 <>
-                  {/* <span className="animate-spin inline-block w-10 h-10 border-2 border-white border-t-transparent rounded-full mr-2"></span> */}
+                  <span className="spinner" role="status" aria-hidden="true"></span>
                   Signing In...
                 </>
               ) : (
@@ -160,27 +185,10 @@ const SignInLayer = () => {
               )}
             </button>
 
-             {/* <button
-              type='submit'
-              className='btn btn-primary text-sm btn-sm px-12 py-16 w-100 radius-12 mt-32'
-            >
-              {" "}
-              Sign In
-            </button> */}
-
-            {(error || successMessage) && (
-                <div className="mt-4 text-center">
-                    {error && <p className="text-red-500 text-sm" role="alert">{error}</p>}
-                    {successMessage && <p className="text-green-500 text-sm" role="status">{successMessage}</p>}
-                </div>
-            )}
-
-
-           
-            <div className='mt-32 text-center text-sm'>
-              <p className='mb-0'>
-                Don’t have an account?{" "}
-                <Link href='/sign-up' className='text-primary-600 fw-semibold'>
+            <div className='signup-link'>
+              <p>
+                Don't have an account?{" "}
+                <Link href='/sign-up' className='signup-text'>
                   Sign Up
                 </Link>
               </p>
@@ -188,6 +196,293 @@ const SignInLayer = () => {
           </form>
         </div>
       </div>
+
+      {/* CSS Styles */}
+      <style jsx>{`
+        .auth-container {
+          display: flex;
+          min-height: 100vh;
+          position: relative;
+        }
+        
+        /* Background Image - Desktop */
+        .auth-background {
+          display: none;
+          position: fixed;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 50%;
+          background-image: url('/assets/images/login-page.png');
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+          z-index: 0;
+        }
+        
+        /* Form Container - Desktop */
+        .auth-form {
+          width: 100%;
+          padding: 2rem 1.5rem;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background-color: white;
+          z-index: 1;
+        }
+        
+        .form-wrapper {
+          width: 100%;
+          max-width: 464px;
+        }
+        
+        /* Responsive Styles */
+        @media (min-width: 992px) {
+          .auth-background {
+            display: block;
+          }
+          
+          .auth-form {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 50%;
+            padding: 3rem 6rem;
+            overflow-y: auto;
+          }
+        }
+        
+        /* Alert Styles */
+        .alert-container {
+          margin-bottom: 1.5rem;
+        }
+        
+        .alert {
+          display: flex;
+          align-items: center;
+          padding: 1rem;
+          border-radius: 0.75rem;
+          margin-bottom: 1rem;
+          animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        .error {
+          background-color: #FEF2F2;
+          border: 1px solid #FECACA;
+        }
+        
+        .success {
+          background-color: #F0FDF4;
+          border: 1px solid #BBF7D0;
+        }
+        
+        .alert-icon {
+          font-size: 1.25rem;
+          margin-right: 0.75rem;
+        }
+        
+        .alert-icon.error {
+          color: #EF4444;
+        }
+        
+        .alert-icon.success {
+          color: #22C55E;
+        }
+        
+        .alert-message {
+          font-weight: 500;
+          margin: 0;
+        }
+        
+        .alert-message.error {
+          color: #EF4444;
+        }
+        
+        .alert-message.success {
+          color: #22C55E;
+        }
+        
+        /* Form Header */
+        .form-header {
+          margin-bottom: 2rem;
+        }
+        
+        .logo-link {
+          display: block;
+          max-width: 290px;
+          margin-bottom: 2.5rem;
+        }
+        
+        .logo-image {
+          width: 100%;
+          height: auto;
+        }
+        
+        .form-title {
+          color: #1F2937;
+          font-size: 1.75rem;
+          font-weight: 700;
+          margin-bottom: 0.75rem;
+        }
+        
+        .form-subtitle {
+          color: #6B7280;
+          font-size: 1.125rem;
+          margin-bottom: 2rem;
+        }
+        
+        /* Form Inputs */
+        .input-field {
+          position: relative;
+          margin-bottom: 1rem;
+        }
+        
+        .password-field {
+          margin-bottom: 1.25rem;
+        }
+        
+        .input-icon {
+          position: absolute;
+          top: 50%;
+          left: 1rem;
+          transform: translateY(-50%);
+          color: #9CA3AF;
+          font-size: 1.25rem;
+        }
+        
+        .form-input {
+          width: 100%;
+          height: 3.5rem;
+          background-color: #F9FAFB;
+          border-radius: 0.75rem;
+          padding-left: 3rem;
+          border: 1px solid #E5E7EB;
+          transition: all 0.2s;
+        }
+        
+        .form-input:focus {
+          border-color: #3B82F6;
+          outline: none;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+        
+        .password-toggle {
+          position: absolute;
+          top: 50%;
+          right: 1rem;
+          transform: translateY(-50%);
+          color: #9CA3AF;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 1.25rem;
+        }
+        
+        .password-toggle:hover {
+          color: #4B5563;
+        }
+        
+        /* Form Options */
+        .form-options {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 1.5rem;
+        }
+        
+        .remember-me {
+          display: flex;
+          align-items: center;
+        }
+        
+        .remember-checkbox {
+          width: 1rem;
+          height: 1rem;
+          border: 1px solid #D1D5DB;
+          border-radius: 0.25rem;
+          margin-right: 0.5rem;
+        }
+        
+        .remember-me label {
+          color: #6B7280;
+        }
+        
+        .forgot-password {
+          color: #2563EB;
+          font-weight: 500;
+        }
+        
+        .forgot-password:hover {
+          color: #1D4ED8;
+        }
+        
+        /* Submit Button */
+        .submit-button {
+          width: 100%;
+          padding: 1rem;
+          background-color: #2563EB;
+          color: white;
+          border: none;
+          border-radius: 0.75rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background-color 0.2s;
+          margin-top: 2rem;
+        }
+        
+        .submit-button:hover {
+          background-color: #1D4ED8;
+        }
+        
+        .submit-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        
+        .spinner {
+          display: inline-block;
+          width: 1rem;
+          height: 1rem;
+          margin-right: 0.5rem;
+          border: 0.15em solid currentColor;
+          border-right-color: transparent;
+          border-radius: 50%;
+          animation: spinner-border 0.75s linear infinite;
+        }
+        
+        /* Sign Up Link */
+        .signup-link {
+          text-align: center;
+          margin-top: 2rem;
+          font-size: 0.875rem;
+          color: #6B7280;
+        }
+        
+        .signup-text {
+          color: #2563EB;
+          font-weight: 600;
+        }
+        
+        .signup-text:hover {
+          color: #1D4ED8;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes spinner-border {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </section>
   );
 };

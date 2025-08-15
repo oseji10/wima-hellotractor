@@ -1,7 +1,7 @@
 import SignInLayer from "@/components/SignInLayer";
 
 export const metadata = {
-  title: "WIMA App - Women In Mechanized Agriculture",
+  title: "Login - MamaTrak App",
   description:
     "WIMA is at the forefront of revolutionizing mechanized agriculture in Nigeria",
 };

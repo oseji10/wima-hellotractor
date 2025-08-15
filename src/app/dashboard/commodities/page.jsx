@@ -1,9 +1,9 @@
-import DashBoardLayerOne from "@/components/DashBoardLayerOne";
+import Breadcrumb from "@/components/Breadcrumb";
+import CommoditiesTable from "@/components/Commodities";
 import MasterLayout from "@/masterLayout/MasterLayout";
-import { Breadcrumb } from "react-bootstrap";
 
 export const metadata = {
-  title: "MamaTrak Dashboard - Women In Mechanized Agriculture",
+  title: "Commodities - MamaTrak App",
   description:
     "WIMA is at the forefront of revolutionizing mechanized agriculture in Nigeria",
 };
@@ -14,10 +14,10 @@ const Page = () => {
       {/* MasterLayout */}
       <MasterLayout>
         {/* Breadcrumb */}
-        <Breadcrumb title='MamaTrak Dashboard' />
+        <Breadcrumb title='Commodities' />
 
-        {/* DashBoardLayerOne */}
-        <DashBoardLayerOne />
+        {/* TableDataLayer */}
+        <CommoditiesTable />
       </MasterLayout>
     </>
   );

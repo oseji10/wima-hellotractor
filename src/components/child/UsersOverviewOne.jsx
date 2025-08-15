@@ -35,15 +35,29 @@ const UsersOverviewOne = () => {
             <li className='d-flex align-items-center gap-2'>
               <span className='w-12-px h-12-px radius-2 bg-primary-600' />
               <span className='text-secondary-light text-sm fw-normal'>
-                New:
+                Kano:
                 <span className='text-primary-light fw-semibold'>500</span>
               </span>
             </li>
             <li className='d-flex align-items-center gap-2'>
               <span className='w-12-px h-12-px radius-2 bg-yellow' />
               <span className='text-secondary-light text-sm fw-normal'>
-                Subscribed:
+                Kaduna:
                 <span className='text-primary-light fw-semibold'>300</span>
+              </span>
+            </li>
+             <li className='d-flex align-items-center gap-2'>
+              <span className='w-12-px h-12-px radius-2 bg-yellow' />
+              <span className='text-secondary-light text-sm fw-normal'>
+                Gombe:
+                <span className='text-primary-light fw-semibold'>350</span>
+              </span>
+            </li>
+             <li className='d-flex align-items-center gap-2'>
+              <span className='w-12-px h-12-px radius-2 bg-yellow' />
+              <span className='text-secondary-light text-sm fw-normal'>
+                Adamawa:
+                <span className='text-primary-light fw-semibold'>150</span>
               </span>
             </li>
           </ul>

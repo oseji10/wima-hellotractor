@@ -3,27 +3,30 @@ import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import api from "../../lib/api";
 
-const MSPSTable = () => {
+const FarmersTable = () => {
   // State management
-  const [allMsps, setAllMsps] = useState([]);
-  const [displayedMsps, setDisplayedMsps] = useState([]);
+  const [allFarmers, setAllFarmers] = useState([]);
+  const [displayedFarmers, setDisplayedFarmers] = useState([]);
   const [states, setStates] = useState([]);
   const [lgas, setLgas] = useState([]);
   const [selectedState, setSelectedState] = useState("");
   const [selectedLga, setSelectedLga] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingStates, setLoadingStates] = useState(false);
-  const [loadingMsps, setLoadingMsps] = useState(false);
+  const [loadingFarmers, setLoadingFarmers] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [otherNames, setOtherNames] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [email, setEmail] = useState("");
+  const [alternatePhoneNumber, setAlternatePhoneNumber] = useState("");
+  const [gender, setGender] = useState("");
+  const [ageBracket, setAgeBracket] = useState("");
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [selectedMsp, setSelectedMsp] = useState(null);
+  const [selectedFarmer, setSelectedFarmer] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -33,10 +36,10 @@ const MSPSTable = () => {
   });
   const [isFiltered, setIsFiltered] = useState(false);
 
-  // Fetch MSPs with filtering and pagination
+  // Fetch Farmers with filtering and pagination
   useEffect(() => {
-    const fetchMsps = async () => {
-      setLoadingMsps(true);
+    const fetchFarmers = async () => {
+      setLoadingFarmers(true);
       try {
         const params = {
           page: pagination.currentPage,
@@ -48,18 +51,18 @@ const MSPSTable = () => {
         if (selectedLga) params.lga = selectedLga;
         if (searchTerm) params.search = searchTerm;
 
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/msps`, { params });
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/farmers`, { params });
         const data = response.data;
-        const mspsData = Array.isArray(data.data) ? data.data : [];
+        const farmersData = Array.isArray(data.data) ? data.data : [];
 
         if (selectedState || selectedLga || searchTerm) {
           // Using backend filtering
-          setDisplayedMsps(mspsData);
+          setDisplayedFarmers(farmersData);
           setIsFiltered(true);
         } else {
-          // No filters, store all MSPs
-          setAllMsps(mspsData);
-          setDisplayedMsps(mspsData);
+          // No filters, store all Farmers
+          setAllFarmers(farmersData);
+          setDisplayedFarmers(farmersData);
           setIsFiltered(false);
         }
         
@@ -69,40 +72,40 @@ const MSPSTable = () => {
           total: data.total || 0,
         }));
       } catch (error) {
-        console.error("Error fetching MSPs:", error);
-        setError("Failed to load MSPs");
-        setAllMsps([]);
-        setDisplayedMsps([]);
+        console.error("Error fetching Farmers:", error);
+        setError("Failed to load Farmers");
+        setAllFarmers([]);
+        setDisplayedFarmers([]);
       } finally {
-        setLoadingMsps(false);
+        setLoadingFarmers(false);
       }
     };
-    fetchMsps();
+    fetchFarmers();
   }, [pagination.currentPage, pagination.perPage, selectedState, selectedLga, searchTerm]);
 
   // Apply frontend filtering when we have all data and filters are active
   useEffect(() => {
     if (!isFiltered && (selectedState || selectedLga || searchTerm)) {
-      let filtered = [...allMsps];
+      let filtered = [...allFarmers];
       
       if (selectedState) {
-        filtered = filtered.filter(msp => 
-          msp.hub?.state?.toString() === selectedState.toString()
+        filtered = filtered.filter(farmer => 
+          farmer.msp?.hub?.toString() === selectedState.toString()
         );
       }
       
       if (selectedLga) {
-        filtered = filtered.filter(msp => 
-          msp.hub?.lga?.toString() === selectedLga.toString()
+        filtered = filtered.filter(farmer => 
+          farmer.subhubs?.hubId?.toString() === selectedLga.toString()
         );
       }
       
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
-        filtered = filtered.filter(msp => 
-          msp.users?.firstName?.toLowerCase().includes(term) ||
-          msp.users?.lastName?.toLowerCase().includes(term) ||
-          msp.users?.phoneNumber?.includes(term)
+        filtered = filtered.filter(farmer => 
+          farmer.farmerFirstName?.toLowerCase().includes(term) ||
+          farmer.farmerLastName?.toLowerCase().includes(term) ||
+          farmer.phoneNumber?.includes(term)
         );
       }
       
@@ -111,14 +114,14 @@ const MSPSTable = () => {
       const startIndex = (pagination.currentPage - 1) * pagination.perPage;
       const paginatedData = filtered.slice(startIndex, startIndex + pagination.perPage);
       
-      setDisplayedMsps(paginatedData);
+      setDisplayedFarmers(paginatedData);
       setPagination(prev => ({
         ...prev,
         totalPages,
         total: filtered.length,
       }));
     }
-  }, [allMsps, selectedState, selectedLga, searchTerm, pagination.currentPage, pagination.perPage, isFiltered]);
+  }, [allFarmers, selectedState, selectedLga, searchTerm, pagination.currentPage, pagination.perPage, isFiltered]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -194,32 +197,37 @@ const MSPSTable = () => {
     setSelectedLga("");
     setFirstName("");
     setLastName("");
+    setOtherNames("");
     setPhoneNumber("");
-    setEmail("");
+    setAlternatePhoneNumber("");
+    setGender("");
+    setAgeBracket("");
     setError(null);
   };
 
   // View Modal Handler
-  const handleView = (msp) => {
-    setSelectedMsp(msp);
+  const handleView = (farmer) => {
+    setSelectedFarmer(farmer);
     setViewModalOpen(true);
   };
 
   // Edit Modal Handler
-  const handleEdit = (msp) => {
-    setSelectedMsp(msp);
-    setSelectedState(msp.hub?.state || "");
-    setSelectedLga(msp.hub?.lga || "");
-    setFirstName(msp.users?.firstName || "");
-    setLastName(msp.users?.lastName || "");
-    setPhoneNumber(msp.users?.phoneNumber || "");
-    setEmail(msp.users?.email || "");
+  const handleEdit = (farmer) => {
+    setSelectedFarmer(farmer);
+    setSelectedState(farmer.msp?.hub || "");
+    setFirstName(farmer.farmerFirstName || "");
+    setLastName(farmer.farmerLastName || "");
+    setOtherNames(farmer.farmerOtherNames || "");
+    setPhoneNumber(farmer.phoneNumber || "");
+    setAlternatePhoneNumber(farmer.alternatePhoneNumber || "");
+    setGender(farmer.gender || "");
+    setAgeBracket(farmer.ageBracket || "");
     setEditModalOpen(true);
   };
 
   // Delete Modal Handler
-  const handleDelete = (msp) => {
-    setSelectedMsp(msp);
+  const handleDelete = (farmer) => {
+    setSelectedFarmer(farmer);
     setDeleteModalOpen(true);
   };
 
@@ -227,78 +235,84 @@ const MSPSTable = () => {
   const confirmDelete = async () => {
     try {
       setIsSubmitting(true);
-      const response = await api.delete(`/msps/${selectedMsp.id}`);
+      const response = await api.delete(`/farmers/${selectedFarmer.farmerId}`);
       
       if (response.status >= 200 && response.status < 300) {
-        // Remove from both allMsps and displayedMsps
-        setAllMsps(prev => prev.filter(m => m.id !== selectedMsp.id));
-        setDisplayedMsps(prev => prev.filter(m => m.id !== selectedMsp.id));
+        // Remove from both allFarmers and displayedFarmers
+        setAllFarmers(prev => prev.filter(f => f.farmerId !== selectedFarmer.farmerId));
+        setDisplayedFarmers(prev => prev.filter(f => f.farmerId !== selectedFarmer.farmerId));
         setDeleteModalOpen(false);
       } else {
-        throw new Error(response.data?.message || 'Failed to delete MSP');
+        throw new Error(response.data?.message || 'Failed to delete Farmer');
       }
     } catch (error) {
-      setError(error.response?.data?.message || error.message || 'Failed to delete MSP');
+      setError(error.response?.data?.message || error.message || 'Failed to delete Farmer');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Update MSP
+  // Update Farmer
   const handleUpdate = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
     try {
       const payload = {
-        firstName,
-        lastName,
+        farmerFirstName: firstName,
+        farmerLastName: lastName,
+        farmerOtherNames: otherNames,
         phoneNumber,
-        email,
-        state: selectedState,
-        lga: selectedLga,
+        alternatePhoneNumber,
+        gender,
+        ageBracket,
+        hub: selectedState,
+        subHub: selectedLga,
       };
       
-      const response = await api.put(`/msps/${selectedMsp.id}`, payload);
+      const response = await api.put(`/farmers/${selectedFarmer.farmerId}`, payload);
       
       if (response.status >= 200 && response.status < 300) {
         // Get state and LGA names from existing data
         const stateObj = states.find(s => s.id.toString() === selectedState.toString());
         const lgaObj = lgas.find(l => l.id.toString() === selectedLga.toString());
         
-        // Create updated MSP with all required fields
-        const updatedMsp = {
+        // Create updated Farmer with all required fields
+        const updatedFarmer = {
           ...response.data,
-          hub: {
-            ...selectedMsp.hub,
-            state: selectedState,
-            lga: selectedLga,
+          farmerFirstName: firstName,
+          farmerLastName: lastName,
+          farmerOtherNames: otherNames,
+          phoneNumber,
+          alternatePhoneNumber,
+          gender,
+          ageBracket,
+          msp: {
+            ...selectedFarmer.msp,
+            hub: selectedState,
           },
-          users: {
-            ...selectedMsp.users,
-            firstName,
-            lastName,
-            phoneNumber,
-            email,
+          subhubs: {
+            ...selectedFarmer.subhubs,
+            hubId: selectedLga,
           }
         };
         
-        // Update the MSPs arrays
-        setAllMsps(prev => 
-          prev.map(m => m.id === selectedMsp.id ? updatedMsp : m)
+        // Update the Farmers arrays
+        setAllFarmers(prev => 
+          prev.map(f => f.farmerId === selectedFarmer.farmerId ? updatedFarmer : f)
         );
-        setDisplayedMsps(prev => 
-          prev.map(m => m.id === selectedMsp.id ? updatedMsp : m)
+        setDisplayedFarmers(prev => 
+          prev.map(f => f.farmerId === selectedFarmer.farmerId ? updatedFarmer : f)
         );
         
         setEditModalOpen(false);
         setError(null);
       } else {
-        throw new Error(response.data?.message || 'Failed to update MSP');
+        throw new Error(response.data?.message || 'Failed to update Farmer');
       }
     } catch (error) {
       console.error("Update error:", error);
-      setError(error.response?.data?.message || error.message || 'Failed to update MSP');
+      setError(error.response?.data?.message || error.message || 'Failed to update Farmer');
     } finally {
       setIsSubmitting(false);
     }
@@ -316,30 +330,33 @@ const MSPSTable = () => {
 
     try {
       const payload = {
-        firstName,
-        lastName,
+        farmerFirstName: firstName,
+        farmerLastName: lastName,
+        farmerOtherNames: otherNames,
         phoneNumber,
-        email,
-        state: selectedState,
-        lga: selectedLga,
+        alternatePhoneNumber,
+        gender,
+        ageBracket,
+        hub: selectedState,
+        subHub: selectedLga,
       };
       
-      const response = await api.post('/msps', payload);
+      const response = await api.post('/farmers', payload);
       
       if (response.status >= 200 && response.status < 300) {
-        // Refresh the MSPs after successful addition
-        const mspsResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/msps`);
-        const newMsps = Array.isArray(mspsResponse.data.data) ? mspsResponse.data.data : [];
+        // Refresh the Farmers after successful addition
+        const farmersResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/farmers`);
+        const newFarmers = Array.isArray(farmersResponse.data.data) ? farmersResponse.data.data : [];
         
-        setAllMsps(newMsps);
-        setDisplayedMsps(newMsps);
+        setAllFarmers(newFarmers);
+        setDisplayedFarmers(newFarmers);
         handleCloseModal();
       } else {
-        throw new Error(response.data?.message || 'Failed to add MSP');
+        throw new Error(response.data?.message || 'Failed to add farmer');
       }
     } catch (error) {
       console.error("Submission error:", error);
-      setError(error.response?.data?.message || error.message || 'Failed to add MSP');
+      setError(error.response?.data?.message || error.message || 'Failed to add farmer');
     } finally {
       setIsSubmitting(false);
     }
@@ -356,17 +373,17 @@ const MSPSTable = () => {
     setPagination(prev => ({ ...prev, perPage, currentPage: 1 }));
   };
 
-   return (
+  return (
     <div className="col-lg-12">
       <div className="card">
         <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-          <h5 className="card-title mb-3 mb-md-0">Mechanized Service Providers</h5>
+          <h5 className="card-title mb-3 mb-md-0">Farmers</h5>
           <button
             className="btn btn-primary"
             onClick={() => setIsModalOpen(true)}
-            disabled={loadingMsps}
+            disabled={loadingFarmers}
           >
-            {loadingMsps ? 'Loading...' : 'Add MSP'}
+            {loadingFarmers ? 'Loading...' : 'Add Farmer'}
           </button>
         </div>
         
@@ -392,7 +409,7 @@ const MSPSTable = () => {
             </div>
             
             <div className="col-12 col-md-6 col-lg-3">
-              <label htmlFor="lgaFilter" className="form-label">Filter by Hubs</label>
+              <label htmlFor="lgaFilter" className="form-label">Filter by Sub-Hubs</label>
               <select
                 id="lgaFilter"
                 className="form-select"
@@ -400,7 +417,7 @@ const MSPSTable = () => {
                 onChange={(e) => setSelectedLga(e.target.value)}
                 disabled={!selectedState || lgas.length === 0}
               >
-                <option value="">All Hubs</option>
+                <option value="">All Sub-Hubs</option>
                 {lgas.map((lga) => (
                   <option key={lga.id} value={lga.id}>
                     {lga.name}
@@ -410,11 +427,11 @@ const MSPSTable = () => {
             </div>
             
             <div className="col-12 col-md-6 col-lg-4">
-              <label htmlFor="searchMsp" className="form-label">Search by Name or Phone</label>
+              <label htmlFor="searchFarmer" className="form-label">Search by Name or Phone</label>
               <div className="input-group">
                 <input
                   type="text"
-                  id="searchMsp"
+                  id="searchFarmer"
                   className="form-control"
                   placeholder="Enter name or phone..."
                   value={searchTerm}
@@ -441,11 +458,11 @@ const MSPSTable = () => {
             </div>
           </div>
           
-          {error && !loadingMsps && (
+          {error && !loadingFarmers && (
             <div className="alert alert-danger">{error}</div>
           )}
           
-          {loadingMsps ? (
+          {loadingFarmers ? (
             <div className="text-center py-4">
               <div className="spinner-border text-primary" role="status">
                 <span className="visually-hidden">Loading...</span>
@@ -460,45 +477,45 @@ const MSPSTable = () => {
                       <th scope="col">ID</th>
                       <th scope="col">Name</th>
                       <th scope="col">Phone</th>
-                      <th scope="col">State</th>
-                      <th scope="col">Hub</th>
+                      <th scope="col">Gender</th>
+                      <th scope="col">Age Bracket</th>
+                      <th scope="col">Sub-Hub</th>
                       <th scope="col">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {displayedMsps.length > 0 ? (
-                      displayedMsps.map((msp, index) => (
-                        <tr key={msp.id || index}>
+                    {displayedFarmers.length > 0 ? (
+                      displayedFarmers.map((farmer, index) => (
+                        <tr key={farmer.farmerId || index}>
                           <td>
                             {(pagination.currentPage - 1) * pagination.perPage + index + 1}
                           </td>
-                          <td>{`${msp.users?.firstName || ''} ${msp.users?.lastName || ''}`}</td>
-                          <td>{msp.users?.phoneNumber || 'N/A'}</td>
+                          <td>{`${farmer.farmerFirstName || ''} ${farmer.farmerLastName || ''} ${farmer.farmerOtherNames || ''}`}</td>
+                          <td>{farmer.phoneNumber || 'N/A'}</td>
+                          <td>{farmer.gender || 'N/A'}</td>
+                          <td>{farmer.ageBracket || 'N/A'}</td>
                           <td>
-                            {states.find(s => s.id === msp.hub?.state)?.name || 'N/A'}
-                          </td>
-                          <td>
-                            {lgas.find(l => l.id === msp.hub?.lga)?.name || 'N/A'}
+                            {farmer.subhubs?.subHubName || 'N/A'}
                           </td>
                           <td>
                             <div className="d-flex">
                               <button
                                 className="w-32-px h-32-px me-2 bg-primary-light text-primary-600 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                onClick={() => handleView(msp)}
+                                onClick={() => handleView(farmer)}
                                 title="View"
                               >
                                 <Icon icon="iconamoon:eye-light" width={16} />
                               </button>
                               <button
                                 className="w-32-px h-32-px me-2 bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                onClick={() => handleEdit(msp)}
+                                onClick={() => handleEdit(farmer)}
                                 title="Edit"
                               >
                                 <Icon icon="lucide:edit" width={16} />
                               </button>
                               <button
                                 className="w-32-px h-32-px bg-danger-light text-danger-600 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                onClick={() => handleDelete(msp)}
+                                onClick={() => handleDelete(farmer)}
                                 title="Delete"
                               >
                                 <Icon icon="mingcute:delete-2-line" width={16} />
@@ -509,8 +526,8 @@ const MSPSTable = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="6" className="text-center py-4">
-                          No MSPs found matching your criteria
+                        <td colSpan="7" className="text-center py-4">
+                          No Farmers found matching your criteria
                         </td>
                       </tr>
                     )}
@@ -600,13 +617,13 @@ const MSPSTable = () => {
       </div>
 
       {/* Modals - Made responsive */}
-      {/* Add MSP Modal */}
+      {/* Add Farmer Modal */}
       {isModalOpen && (
         <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Add New MSP</h5>
+                <h5 className="modal-title">Add New Farmer</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -617,7 +634,7 @@ const MSPSTable = () => {
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
                   <div className="row">
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-4 mb-3">
                       <label htmlFor="firstName" className="form-label">First Name</label>
                       <input
                         type="text"
@@ -629,7 +646,7 @@ const MSPSTable = () => {
                         required
                       />
                     </div>
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-4 mb-3">
                       <label htmlFor="lastName" className="form-label">Last Name</label>
                       <input
                         type="text"
@@ -641,10 +658,21 @@ const MSPSTable = () => {
                         required
                       />
                     </div>
+                    <div className="col-12 col-md-4 mb-3">
+                      <label htmlFor="otherNames" className="form-label">Other Names</label>
+                      <input
+                        type="text"
+                        id="otherNames"
+                        className="form-control"
+                        value={otherNames}
+                        onChange={(e) => setOtherNames(e.target.value)}
+                        disabled={isSubmitting}
+                      />
+                    </div>
                   </div>
                   
                   <div className="row">
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-6 mb-3">
                       <label htmlFor="phoneNumber" className="form-label">Phone Number</label>
                       <input
                         type="tel"
@@ -656,16 +684,49 @@ const MSPSTable = () => {
                         required
                       />
                     </div>
-                    <div className="col-md-6 mb-3">
-                      <label htmlFor="email" className="form-label">Email</label>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="alternatePhoneNumber" className="form-label">Alternate Phone</label>
                       <input
-                        type="email"
-                        id="email"
+                        type="tel"
+                        id="alternatePhoneNumber"
                         className="form-control"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        value={alternatePhoneNumber}
+                        onChange={(e) => setAlternatePhoneNumber(e.target.value)}
                         disabled={isSubmitting}
                       />
+                    </div>
+                  </div>
+                  
+                  <div className="row">
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="gender" className="form-label">Gender</label>
+                      <select
+                        id="gender"
+                        className="form-select"
+                        value={gender}
+                        onChange={(e) => setGender(e.target.value)}
+                        disabled={isSubmitting}
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="ageBracket" className="form-label">Age Bracket</label>
+                      <select
+                        id="ageBracket"
+                        className="form-select"
+                        value={ageBracket}
+                        onChange={(e) => setAgeBracket(e.target.value)}
+                        disabled={isSubmitting}
+                      >
+                        <option value="">Select Age Bracket</option>
+                        <option value="Youth: 15-24">Youth: 15-24</option>
+                        <option value="Adult: 25-64">Adult: 25-64</option>
+                        <option value="Senior: 65+">Senior: 65+</option>
+                      </select>
                     </div>
                   </div>
                   
@@ -692,7 +753,7 @@ const MSPSTable = () => {
                     )}
                   </div>
                   <div className="mb-3">
-                    <label htmlFor="lga" className="form-label">LGA</label>
+                    <label htmlFor="lga" className="form-label">Sub-Hub</label>
                     <select
                       id="lga"
                       className="form-select"
@@ -701,7 +762,7 @@ const MSPSTable = () => {
                       disabled={!selectedState || lgas.length === 0 || isSubmitting}
                       required
                     >
-                      <option value="">Select LGA</option>
+                      <option value="">Select Sub-Hub</option>
                       {lgas.map((lga) => (
                         <option key={lga.id} value={lga.id}>
                           {lga.name}
@@ -734,7 +795,7 @@ const MSPSTable = () => {
                           Saving...
                         </>
                       ) : (
-                        'Save MSP'
+                        'Save Farmer'
                       )}
                     </button>
                   </div>
@@ -751,7 +812,7 @@ const MSPSTable = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">MSP Details</h5>
+                <h5 className="modal-title">Farmer Details</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -761,26 +822,40 @@ const MSPSTable = () => {
               <div className="modal-body">
                 <div className="mb-3">
                   <label className="form-label">Full Name</label>
-                  <p className="form-control-static">{`${selectedMsp?.users?.firstName || ''} ${selectedMsp?.users?.lastName || ''}`}</p>
+                  <p className="form-control-static">{`${selectedFarmer?.farmerFirstName || ''} ${selectedFarmer?.farmerLastName || ''} ${selectedFarmer?.farmerOtherNames || ''}`}</p>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Phone Number</label>
-                  <p className="form-control-static">{selectedMsp?.users?.phoneNumber || 'N/A'}</p>
+                  <p className="form-control-static">{selectedFarmer?.phoneNumber || 'N/A'}</p>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Email</label>
-                  <p className="form-control-static">{selectedMsp?.users?.email || 'N/A'}</p>
+                  <label className="form-label">Alternate Phone</label>
+                  <p className="form-control-static">{selectedFarmer?.alternatePhoneNumber || 'N/A'}</p>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Gender</label>
+                  <p className="form-control-static">{selectedFarmer?.gender || 'N/A'}</p>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Age Bracket</label>
+                  <p className="form-control-static">{selectedFarmer?.ageBracket || 'N/A'}</p>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">State</label>
                   <p className="form-control-static">
-                    {states.find(s => s.id === selectedMsp?.hub?.state)?.name || 'N/A'}
+                    {states.find(s => s.id === selectedFarmer?.msp?.hub)?.name || 'N/A'}
                   </p>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">LGA</label>
+                  <label className="form-label">Sub-Hub</label>
                   <p className="form-control-static">
-                    {lgas.find(l => l.id === selectedMsp?.hub?.lga)?.name || 'N/A'}
+                    {selectedFarmer?.subhubs?.subHubName || 'N/A'}
+                  </p>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Status</label>
+                  <p className="form-control-static">
+                    {selectedFarmer?.status || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -804,7 +879,7 @@ const MSPSTable = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Edit MSP</h5>
+                <h5 className="modal-title">Edit Farmer</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -815,7 +890,7 @@ const MSPSTable = () => {
               <div className="modal-body">
                 <form onSubmit={handleUpdate}>
                   <div className="row">
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-4 mb-3">
                       <label htmlFor="editFirstName" className="form-label">First Name</label>
                       <input
                         type="text"
@@ -827,7 +902,7 @@ const MSPSTable = () => {
                         required
                       />
                     </div>
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-4 mb-3">
                       <label htmlFor="editLastName" className="form-label">Last Name</label>
                       <input
                         type="text"
@@ -839,10 +914,21 @@ const MSPSTable = () => {
                         required
                       />
                     </div>
+                    <div className="col-12 col-md-4 mb-3">
+                      <label htmlFor="editOtherNames" className="form-label">Other Names</label>
+                      <input
+                        type="text"
+                        id="editOtherNames"
+                        className="form-control"
+                        value={otherNames}
+                        onChange={(e) => setOtherNames(e.target.value)}
+                        disabled={isSubmitting}
+                      />
+                    </div>
                   </div>
                   
                   <div className="row">
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-6 mb-3">
                       <label htmlFor="editPhoneNumber" className="form-label">Phone Number</label>
                       <input
                         type="tel"
@@ -854,16 +940,49 @@ const MSPSTable = () => {
                         required
                       />
                     </div>
-                    <div className="col-md-6 mb-3">
-                      <label htmlFor="editEmail" className="form-label">Email</label>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="editAlternatePhoneNumber" className="form-label">Alternate Phone</label>
                       <input
-                        type="email"
-                        id="editEmail"
+                        type="tel"
+                        id="editAlternatePhoneNumber"
                         className="form-control"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        value={alternatePhoneNumber}
+                        onChange={(e) => setAlternatePhoneNumber(e.target.value)}
                         disabled={isSubmitting}
                       />
+                    </div>
+                  </div>
+                  
+                  <div className="row">
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="editGender" className="form-label">Gender</label>
+                      <select
+                        id="editGender"
+                        className="form-select"
+                        value={gender}
+                        onChange={(e) => setGender(e.target.value)}
+                        disabled={isSubmitting}
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="editAgeBracket" className="form-label">Age Bracket</label>
+                      <select
+                        id="editAgeBracket"
+                        className="form-select"
+                        value={ageBracket}
+                        onChange={(e) => setAgeBracket(e.target.value)}
+                        disabled={isSubmitting}
+                      >
+                        <option value="">Select Age Bracket</option>
+                        <option value="Youth: 15-24">Youth: 15-24</option>
+                        <option value="Adult: 25-64">Adult: 25-64</option>
+                        <option value="Senior: 65+">Senior: 65+</option>
+                      </select>
                     </div>
                   </div>
                   
@@ -886,7 +1005,7 @@ const MSPSTable = () => {
                     </select>
                   </div>
                   <div className="mb-3">
-                    <label htmlFor="editLga" className="form-label">LGA</label>
+                    <label htmlFor="editLga" className="form-label">Sub-Hub</label>
                     <select
                       id="editLga"
                       className="form-select"
@@ -895,7 +1014,7 @@ const MSPSTable = () => {
                       disabled={!selectedState || lgas.length === 0 || isSubmitting}
                       required
                     >
-                      <option value="">Select LGA</option>
+                      <option value="">Select Sub-Hub</option>
                       {lgas.map((lga) => (
                         <option key={lga.id} value={lga.id}>
                           {lga.name}
@@ -928,7 +1047,7 @@ const MSPSTable = () => {
                           Updating...
                         </>
                       ) : (
-                        'Update MSP'
+                        'Update Farmer'
                       )}
                     </button>
                   </div>
@@ -954,7 +1073,7 @@ const MSPSTable = () => {
                 ></button>
               </div>
               <div className="modal-body">
-                <p>Are you sure you want to delete the MSP <strong>{`${selectedMsp?.users?.firstName || ''} ${selectedMsp?.users?.lastName || ''}`}</strong>?</p>
+                <p>Are you sure you want to delete the farmer <strong>{`${selectedFarmer?.farmerFirstName || ''} ${selectedFarmer?.farmerLastName || ''}`}</strong>?</p>
                 <p className="text-danger">This action cannot be undone.</p>
                 
                 {error && (
@@ -982,7 +1101,7 @@ const MSPSTable = () => {
                       Deleting...
                     </>
                   ) : (
-                    'Delete MSP'
+                    'Delete Farmer'
                   )}
                 </button>
               </div>
@@ -994,4 +1113,4 @@ const MSPSTable = () => {
   );
 };
 
-export default MSPSTable;
+export default FarmersTable;

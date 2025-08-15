@@ -1,0 +1,594 @@
+"use client";
+import { useState, useEffect } from "react";
+import { Icon } from "@iconify/react/dist/iconify.js";
+import api from "../../lib/api";
+
+const CommoditiesTable = () => {
+  // State management
+  const [commodities, setCommodities] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [commodityName, setCommodityName] = useState("");
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedCommodity, setSelectedCommodity] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    perPage: 10,
+    total: 0,
+  });
+
+  // Fetch commodities with pagination and search
+  useEffect(() => {
+    const fetchCommodities = async () => {
+      setLoading(true);
+      try {
+        const params = {
+          page: pagination.currentPage,
+          per_page: pagination.perPage,
+        };
+
+        if (searchTerm) params.search = searchTerm;
+
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/commodities`, { params });
+        const data = response.data;
+        const commoditiesData = Array.isArray(data.data) ? data.data : [];
+
+        setCommodities(commoditiesData);
+        
+        setPagination(prev => ({
+          ...prev,
+          totalPages: data.last_page || 1,
+          total: data.total || 0,
+        }));
+      } catch (error) {
+        console.error("Error fetching commodities:", error);
+        setError("Failed to load commodities");
+        setCommodities([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCommodities();
+  }, [pagination.currentPage, pagination.perPage, searchTerm]);
+
+  // Reset to page 1 when search term changes
+  useEffect(() => {
+    if (searchTerm) {
+      setPagination(prev => ({ ...prev, currentPage: 1 }));
+    }
+  }, [searchTerm]);
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setCommodityName("");
+    setError(null);
+  };
+
+  // View Modal Handler
+  const handleView = (commodity) => {
+    setSelectedCommodity(commodity);
+    setViewModalOpen(true);
+  };
+
+  // Edit Modal Handler
+  const handleEdit = (commodity) => {
+    setSelectedCommodity(commodity);
+    setCommodityName(commodity.commodityName || "");
+    setEditModalOpen(true);
+  };
+
+  // Delete Modal Handler
+  const handleDelete = (commodity) => {
+    setSelectedCommodity(commodity);
+    setDeleteModalOpen(true);
+  };
+
+  // Confirm Delete
+  const confirmDelete = async () => {
+    try {
+      setIsSubmitting(true);
+      const response = await api.delete(`/commodities/${selectedCommodity.commodityId}`);
+      
+      if (response.status >= 200 && response.status < 300) {
+        setCommodities(prev => prev.filter(c => c.commodityId !== selectedCommodity.commodityId));
+        setDeleteModalOpen(false);
+      } else {
+        throw new Error(response.data?.message || 'Failed to delete commodity');
+      }
+    } catch (error) {
+      setError(error.response?.data?.message || error.message || 'Failed to delete commodity');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Update Commodity
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      const payload = {
+        commodityName,
+      };
+      
+      const response = await api.put(`/commodities/${selectedCommodity.commodityId}`, payload);
+      
+      if (response.status >= 200 && response.status < 300) {
+        const updatedCommodity = response.data;
+        
+        setCommodities(prev => 
+          prev.map(c => c.commodityId === selectedCommodity.commodityId ? updatedCommodity : c)
+        );
+        setCommodityName('');
+        setEditModalOpen(false);
+        setError(null);
+      } else {
+        throw new Error(response.data?.message || 'Failed to update commodity');
+      }
+    } catch (error) {
+      console.error("Update error:", error);
+      setError(error.response?.data?.message || error.message || 'Failed to update commodity');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      const payload = {
+        commodityName,
+      };
+      
+      const response = await api.post('/commodities', payload);
+      
+      if (response.status >= 200 && response.status < 300) {
+        // Refresh the commodities after successful addition
+        const commoditiesResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/commodities`);
+        const newCommodities = Array.isArray(commoditiesResponse.data.data) ? commoditiesResponse.data.data : [];
+        
+        setCommodities(newCommodities);
+        setCommodityName('');
+        handleCloseModal();
+      } else {
+        throw new Error(response.data?.message || 'Failed to add commodity');
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      setError(error.response?.data?.message || error.message || 'Failed to add commodity');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= pagination.totalPages) {
+      setPagination(prev => ({ ...prev, currentPage: page }));
+    }
+  };
+
+  const handlePerPageChange = (e) => {
+    const perPage = parseInt(e.target.value);
+    setPagination(prev => ({ ...prev, perPage, currentPage: 1 }));
+  };
+
+  return (
+    <div className="col-lg-12">
+      <div className="card">
+        <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+          <h5 className="card-title mb-3 mb-md-0">Commodities</h5>
+          <button
+            className="btn btn-primary"
+            onClick={() => setIsModalOpen(true)}
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : 'Add Commodity'}
+          </button>
+        </div>
+        
+        <div className="card-body">
+          {/* Search Section */}
+          <div className="row mb-4 g-3">
+            <div className="col-12 col-md-6 col-lg-4">
+              <label htmlFor="searchCommodity" className="form-label">Search by Name</label>
+              <div className="input-group">
+                <input
+                  type="text"
+                  id="searchCommodity"
+                  className="form-control"
+                  placeholder="Enter commodity name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <button className="btn btn-outline-secondary" type="button">
+                  <Icon icon="ion:search" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="col-12 col-md-6 col-lg-2 d-flex align-items-end">
+              <button 
+                className="btn btn-secondary w-100"
+                onClick={() => setSearchTerm("")}
+                disabled={!searchTerm}
+              >
+                Reset Search
+              </button>
+            </div>
+          </div>
+          
+          {error && !loading && (
+            <div className="alert alert-danger">{error}</div>
+          )}
+          
+          {loading ? (
+            <div className="text-center py-4">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="table-responsive">
+                <table className="table border-primary-table mb-0">
+                  <thead>
+                    <tr>
+                      <th scope="col">ID</th>
+                      <th scope="col">Commodity Name</th>
+                      <th scope="col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {commodities.length > 0 ? (
+                      commodities.map((commodity, index) => (
+                        <tr key={commodity.commodityId || index}>
+                          <td>
+                            {(pagination.currentPage - 1) * pagination.perPage + index + 1}
+                          </td>
+                          <td>{commodity.commodityName || 'N/A'}</td>
+                          <td>
+                            <div className="d-flex">
+                              <button
+                                className="w-32-px h-32-px me-2 bg-primary-light text-primary-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                onClick={() => handleView(commodity)}
+                                title="View"
+                              >
+                                <Icon icon="iconamoon:eye-light" width={16} />
+                              </button>
+                              <button
+                                className="w-32-px h-32-px me-2 bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                onClick={() => handleEdit(commodity)}
+                                title="Edit"
+                              >
+                                <Icon icon="lucide:edit" width={16} />
+                              </button>
+                              <button
+                                className="w-32-px h-32-px bg-danger-light text-danger-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                onClick={() => handleDelete(commodity)}
+                                title="Delete"
+                              >
+                                <Icon icon="mingcute:delete-2-line" width={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="3" className="text-center py-4">
+                          No commodities found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Responsive Pagination */}
+              {pagination.totalPages > 1 && (
+                <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-3">
+                  <div className="d-flex align-items-center">
+                    <span className="me-2">Show:</span>
+                    <select 
+                      className="form-select form-select-sm w-auto" 
+                      value={pagination.perPage}
+                      onChange={handlePerPageChange}
+                    >
+                      <option value="5">5</option>
+                      <option value="10">10</option>
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                    </select>
+                    <span className="ms-2">entries</span>
+                  </div>
+                  
+                  <div className="order-md-1">
+                    <nav>
+                      <ul className="pagination mb-0 flex-wrap justify-content-center">
+                        <li className={`page-item ${pagination.currentPage === 1 ? 'disabled' : ''}`}>
+                          <button 
+                            className="page-link" 
+                            onClick={() => handlePageChange(pagination.currentPage - 1)}
+                          >
+                            Previous
+                          </button>
+                        </li>
+                        
+                        {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (pagination.totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (pagination.currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                            pageNum = pagination.totalPages - 4 + i;
+                          } else {
+                            pageNum = pagination.currentPage - 2 + i;
+                          }
+                          
+                          return (
+                            <li 
+                              key={pageNum} 
+                              className={`page-item ${pagination.currentPage === pageNum ? 'active' : ''}`}
+                            >
+                              <button 
+                                className="page-link" 
+                                onClick={() => handlePageChange(pageNum)}
+                              >
+                                {pageNum}
+                              </button>
+                            </li>
+                          );
+                        })}
+                        
+                        <li className={`page-item ${pagination.currentPage === pagination.totalPages ? 'disabled' : ''}`}>
+                          <button 
+                            className="page-link" 
+                            onClick={() => handlePageChange(pagination.currentPage + 1)}
+                          >
+                            Next
+                          </button>
+                        </li>
+                      </ul>
+                    </nav>
+                  </div>
+                  
+                  <div className="text-center text-md-start">
+                    Showing {(pagination.currentPage - 1) * pagination.perPage + 1} to{' '}
+                    {Math.min(pagination.currentPage * pagination.perPage, pagination.total)} of{' '}
+                    {pagination.total} entries
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Modals */}
+      {/* Add Commodity Modal */}
+      {isModalOpen && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Add New Commodity</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={handleCloseModal}
+                  disabled={isSubmitting}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <form onSubmit={handleSubmit}>
+                  <div className="mb-3">
+                    <label htmlFor="commodityName" className="form-label">Commodity Name</label>
+                    <input
+                      type="text"
+                      id="commodityName"
+                      className="form-control"
+                      value={commodityName}
+                      onChange={(e) => setCommodityName(e.target.value)}
+                      disabled={isSubmitting}
+                      required
+                    />
+                  </div>
+                  
+                  {error && (
+                    <div className="alert alert-danger">{error}</div>
+                  )}
+                  
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleCloseModal}
+                      disabled={isSubmitting}
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                          Saving...
+                        </>
+                      ) : (
+                        'Save Commodity'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Modal */}
+      {viewModalOpen && (
+        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Commodity Details</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setViewModalOpen(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label className="form-label">Commodity Name</label>
+                  <p className="form-control-static">{selectedCommodity?.commodityName || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setViewModalOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editModalOpen && (
+        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Edit Commodity</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setEditModalOpen(false)}
+                  disabled={isSubmitting}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <form onSubmit={handleUpdate}>
+                  <div className="mb-3">
+                    <label htmlFor="editCommodityName" className="form-label">Commodity Name</label>
+                    <input
+                      type="text"
+                      id="editCommodityName"
+                      className="form-control"
+                      value={commodityName}
+                      onChange={(e) => setCommodityName(e.target.value)}
+                      disabled={isSubmitting}
+                      required
+                    />
+                  </div>
+                  
+                  {error && (
+                    <div className="alert alert-danger">{error}</div>
+                  )}
+                  
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setEditModalOpen(false)}
+                      disabled={isSubmitting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                          Updating...
+                        </>
+                      ) : (
+                        'Update Commodity'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && (
+        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Delete</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setDeleteModalOpen(false)}
+                  disabled={isSubmitting}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>Are you sure you want to delete the commodity <strong>{selectedCommodity?.commodityName || ''}</strong>?</p>
+                <p className="text-danger">This action cannot be undone.</p>
+                
+                {error && (
+                  <div className="alert alert-danger">{error}</div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setDeleteModalOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={confirmDelete}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Commodity'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CommoditiesTable;
