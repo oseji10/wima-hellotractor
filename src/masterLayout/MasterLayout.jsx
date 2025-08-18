@@ -545,16 +545,39 @@ const MasterLayout = ({ children }) => {
               </Link>
             </li>
 
+            
              <li>
-              <Link href="/dashboard/investors">
+              <Link href="/dashboard/services">
                 <Icon
-                  icon="material-symbols-light:money-bag-outline"
+                  icon="vaadin:handshake"
                   className="menu-icon"
                 />
-                <span>Investors</span>
+                <span>Services</span>
               </Link>
             </li>
 
+              <li>
+              <Link href="/dashboard/commodities">
+                <Icon
+                  icon="ph:grains"
+                  className="menu-icon"
+                />
+                <span>Commodities</span>
+              </Link>
+            </li>
+
+
+            <li>
+              <Link href="/dashboard/transactions">
+                <Icon
+                  icon="bitcoin-icons:transactions-filled"
+                  className="menu-icon"
+                />
+                <span>Transactions</span>
+              </Link>
+            </li>
+
+            
             <li>
               <Link href="/dashboard/memberships">
                 <Icon
@@ -566,14 +589,18 @@ const MasterLayout = ({ children }) => {
             </li>
 
              <li>
-              <Link href="/dashboard/services">
+              <Link href="/dashboard/investors">
                 <Icon
-                  icon="vaadin:handshake"
+                  icon="material-symbols-light:money-bag-outline"
                   className="menu-icon"
                 />
-                <span>Services</span>
+                <span>Investors</span>
               </Link>
             </li>
+
+            
+
+
 
              <li>
               <Link href="/dashboard/equipment">
@@ -585,16 +612,7 @@ const MasterLayout = ({ children }) => {
               </Link>
             </li>
 
-             <li>
-              <Link href="/dashboard/commodities">
-                <Icon
-                  icon="ph:grains"
-                  className="menu-icon"
-                />
-                <span>Commodities</span>
-              </Link>
-            </li>
-
+           
 
              <li>
               <Link href="/dashboard/equipment">
@@ -606,15 +624,7 @@ const MasterLayout = ({ children }) => {
               </Link>
             </li>
             
-             <li>
-              <Link href="/dashboard/transactions">
-                <Icon
-                  icon="bitcoin-icons:transactions-filled"
-                  className="menu-icon"
-                />
-                <span>Transactions</span>
-              </Link>
-            </li>
+             
 
              <li>
               <Link href="/dashboard/transactions">

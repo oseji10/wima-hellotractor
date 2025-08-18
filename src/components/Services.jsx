@@ -140,6 +140,10 @@ const ServicesTable = () => {
         );
         
         setEditModalOpen(false);
+          setServiceName("");
+    setCost("");
+    setMeasuringUnit("");
+    setCostPerUnit("");
         setError(null);
       } else {
         throw new Error(response.data?.message || 'Failed to update service');

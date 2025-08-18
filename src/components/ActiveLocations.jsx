@@ -145,13 +145,13 @@ const ActiveLocationsTable = () => {
       setLoadingStates(true);
       setError(null);
       try {
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/states`);
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/active`);
         const data = response.data || response;
         setStates(
           Array.isArray(data)
             ? data.map((state) => ({
-                id: state.stateId || state.id,
-                name: state.stateName || state.name,
+                id: state.state_info.stateId || state.id,
+                name: state.state_info.stateName || state.name,
               }))
             : []
         );

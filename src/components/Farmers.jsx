@@ -136,13 +136,13 @@ const FarmersTable = () => {
       setLoadingStates(true);
       setError(null);
       try {
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/states`);
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/active`);
         const data = response.data || response;
         setStates(
           Array.isArray(data)
             ? data.map((state) => ({
-                id: state.stateId || state.id,
-                name: state.stateName || state.name,
+                id: state.state_info.stateId || state.id,
+                name: state.state_info.stateName || state.name,
               }))
             : []
         );
@@ -474,7 +474,7 @@ const FarmersTable = () => {
                 <table className="table border-primary-table mb-0">
                   <thead>
                     <tr>
-                      <th scope="col">ID</th>
+                      <th scope="col">Farmer ID</th>
                       <th scope="col">Name</th>
                       <th scope="col">Phone</th>
                       <th scope="col">Gender</th>
@@ -488,7 +488,8 @@ const FarmersTable = () => {
                       displayedFarmers.map((farmer, index) => (
                         <tr key={farmer.farmerId || index}>
                           <td>
-                            {(pagination.currentPage - 1) * pagination.perPage + index + 1}
+                            {/* {(pagination.currentPage - 1) * pagination.perPage + index + 1} */}
+                            {farmer.farmerId || 'N/A'}
                           </td>
                           <td>{`${farmer.farmerFirstName || ''} ${farmer.farmerLastName || ''} ${farmer.farmerOtherNames || ''}`}</td>
                           <td>{farmer.phoneNumber || 'N/A'}</td>

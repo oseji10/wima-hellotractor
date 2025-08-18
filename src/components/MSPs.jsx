@@ -133,13 +133,13 @@ const MSPSTable = () => {
       setLoadingStates(true);
       setError(null);
       try {
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/states`);
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/active`);
         const data = response.data || response;
         setStates(
           Array.isArray(data)
             ? data.map((state) => ({
-                id: state.stateId || state.id,
-                name: state.stateName || state.name,
+                id: state.state_info.stateId || state.id,
+                name: state.state_info.stateName || state.name,
               }))
             : []
         );
@@ -457,7 +457,7 @@ const MSPSTable = () => {
                 <table className="table border-primary-table mb-0">
                   <thead>
                     <tr>
-                      <th scope="col">ID</th>
+                      <th scope="col">MSP ID</th>
                       <th scope="col">Name</th>
                       <th scope="col">Phone</th>
                       <th scope="col">State</th>
@@ -470,7 +470,8 @@ const MSPSTable = () => {
                       displayedMsps.map((msp, index) => (
                         <tr key={msp.id || index}>
                           <td>
-                            {(pagination.currentPage - 1) * pagination.perPage + index + 1}
+                            {/* {(pagination.currentPage - 1) * pagination.perPage + index + 1} */}
+                            {msp.mspId || 'N/A'}
                           </td>
                           <td>{`${msp.users?.firstName || ''} ${msp.users?.lastName || ''}`}</td>
                           <td>{msp.users?.phoneNumber || 'N/A'}</td>
