@@ -35,6 +35,50 @@ const FarmersTable = () => {
     total: 0,
   });
   const [isFiltered, setIsFiltered] = useState(false);
+  const [activeHubs, setActiveHubs] = useState([]);
+  const [modalSelectedState, setModalSelectedState] = useState("");
+  const [modalSelectedLga, setModalSelectedLga] = useState("");
+  const [editModalSelectedState, setEditModalSelectedState] = useState("");
+  const [editModalSelectedLga, setEditModalSelectedLga] = useState("");
+
+  // Fetch active hubs data
+  useEffect(() => {
+    const fetchActiveHubs = async () => {
+      setLoadingStates(true);
+      setError(null);
+      try {
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/all-active-hubs`);
+        const data = response.data || response;
+        
+        // Store the active hubs data
+        const hubs = Array.isArray(data) ? data : [];
+        setActiveHubs(hubs);
+        
+        // Extract unique states from active hubs
+        const uniqueStates = {};
+        hubs.forEach(hub => {
+          if (hub.state_info && hub.state_info.stateId && hub.state_info.stateName) {
+            uniqueStates[hub.state_info.stateId] = {
+              id: hub.state_info.stateId,
+              name: hub.state_info.stateName
+            };
+          } else {
+            console.warn("Invalid hub data, missing state_info:", hub);
+          }
+        });
+        
+        setStates(Object.values(uniqueStates));
+      } catch (error) {
+        console.error("Error fetching active hubs:", error);
+        setError("Failed to load states. Please try again.");
+        setStates([]);
+        setActiveHubs([]);
+      } finally {
+        setLoadingStates(false);
+      }
+    };
+    fetchActiveHubs();
+  }, []);
 
   // Fetch Farmers with filtering and pagination
   useEffect(() => {
@@ -130,71 +174,103 @@ const FarmersTable = () => {
     }
   }, [selectedState, selectedLga, searchTerm]);
 
-  // Fetch states
+  // Update LGAs when state is selected for filtering
   useEffect(() => {
-    const fetchStates = async () => {
-      setLoadingStates(true);
-      setError(null);
-      try {
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/active`);
-        const data = response.data || response;
-        setStates(
-          Array.isArray(data)
-            ? data.map((state) => ({
-                id: state.state_info.stateId || state.id,
-                name: state.state_info.stateName || state.name,
-              }))
-            : []
-        );
-      } catch (error) {
-        console.error("Error fetching states:", error);
-        setError("Failed to load states. Please try again.");
-        setStates([]);
-      } finally {
-        setLoadingStates(false);
+    if (!selectedState) {
+      setLgas([]);
+      setSelectedLga("");
+      return;
+    }
+    
+    // Filter active hubs by selected state
+    const stateHubs = activeHubs.filter(hub => 
+      hub.state_info && hub.state_info.stateId && 
+      hub.state_info.stateId.toString() === selectedState.toString()
+    );
+    
+    // Extract unique LGAs from the filtered hubs
+    const uniqueLgas = {};
+    stateHubs.forEach(hub => {
+      if (hub.lga_info && hub.lga_info.lgaId && hub.lga_info.lgaName) {
+        uniqueLgas[hub.lga_info.lgaId] = {
+          id: hub.lga_info.lgaId,
+          name: hub.lga_info.lgaName
+        };
+      } else {
+        console.warn("Invalid hub data, missing lga_info:", hub);
       }
-    };
-    fetchStates();
-  }, []);
+    });
+    
+    setLgas(Object.values(uniqueLgas));
+    setSelectedLga(""); // Reset LGA when state changes
+  }, [selectedState, activeHubs]);
 
-  // Fetch LGAs when state is selected
+  // Update LGAs for edit modal when editModalSelectedState changes
   useEffect(() => {
-    const fetchLgas = async () => {
-      if (!selectedState) {
-        setLgas([]);
-        setSelectedLga("");
-        return;
+    if (!editModalSelectedState) {
+      setEditModalSelectedLga("");
+      setLgas([]);
+      return;
+    }
+    
+    // Filter active hubs by selected state for edit modal
+    const stateHubs = activeHubs.filter(hub => 
+      hub.state_info && hub.state_info.stateId && 
+      hub.state_info.stateId.toString() === editModalSelectedState.toString()
+    );
+    
+    // Extract unique LGAs from the filtered hubs
+    const uniqueLgas = {};
+    stateHubs.forEach(hub => {
+      if (hub.lga_info && hub.lga_info.lgaId && hub.lga_info.lgaName) {
+        uniqueLgas[hub.lga_info.lgaId] = {
+          id: hub.lga_info.lgaId,
+          name: hub.lga_info.lgaName
+        };
+      } else {
+        console.warn("Invalid hub data, missing lga_info:", hub);
       }
-      
-      try {
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/lgas`, {
-          params: { state: selectedState }
-        });
-        
-        const responseData = response.data || response;
-        const lgasData = responseData.data || responseData;
-        
-        setLgas(
-          Array.isArray(lgasData)
-            ? lgasData.map((lga) => ({
-                id: lga.lgaId || lga.id,
-                name: lga.lgaName || lga.name,
-              }))
-            : []
-        );
-      } catch (error) {
-        console.error("Error fetching LGAs:", error);
-        setLgas([]);
-        setSelectedLga("");
+    });
+    
+    setLgas(Object.values(uniqueLgas));
+    setEditModalSelectedLga(""); // Reset LGA when state changes
+  }, [editModalSelectedState, activeHubs]);
+
+  // Update LGAs for add modal when modalSelectedState changes
+  useEffect(() => {
+    if (!modalSelectedState) {
+      setModalSelectedLga("");
+      setLgas([]);
+      return;
+    }
+    
+    // Filter active hubs by selected state for add modal
+    const stateHubs = activeHubs.filter(hub => 
+      hub.state_info && hub.state_info.stateId && 
+      hub.state_info.stateId.toString() === modalSelectedState.toString()
+    );
+    
+    // Extract unique LGAs from the filtered hubs
+    const uniqueLgas = {};
+    stateHubs.forEach(hub => {
+      if (hub.lga_info && hub.lga_info.lgaId && hub.lga_info.lgaName) {
+        uniqueLgas[hub.lga_info.lgaId] = {
+          id: hub.lga_info.lgaId,
+          name: hub.lga_info.lgaName
+        };
+      } else {
+        console.warn("Invalid hub data, missing lga_info:", hub);
       }
-    };
-    fetchLgas();
-  }, [selectedState]);
+    });
+    
+    setLgas(Object.values(uniqueLgas));
+    setModalSelectedLga(""); // Reset LGA when state changes
+  }, [modalSelectedState, activeHubs]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setSelectedState("");
-    setSelectedLga("");
+    setModalSelectedState("");
+    setModalSelectedLga("");
     setFirstName("");
     setLastName("");
     setOtherNames("");
@@ -214,7 +290,8 @@ const FarmersTable = () => {
   // Edit Modal Handler
   const handleEdit = (farmer) => {
     setSelectedFarmer(farmer);
-    setSelectedState(farmer.msp?.hub || "");
+    setEditModalSelectedState(farmer.msp?.hub || "");
+    setEditModalSelectedLga(farmer.subhubs?.hubId || "");
     setFirstName(farmer.farmerFirstName || "");
     setLastName(farmer.farmerLastName || "");
     setOtherNames(farmer.farmerOtherNames || "");
@@ -266,16 +343,16 @@ const FarmersTable = () => {
         alternatePhoneNumber,
         gender,
         ageBracket,
-        hub: selectedState,
-        subHub: selectedLga,
+        hub: editModalSelectedState,
+        subHub: editModalSelectedLga,
       };
       
       const response = await api.put(`/farmers/${selectedFarmer.farmerId}`, payload);
       
       if (response.status >= 200 && response.status < 300) {
         // Get state and LGA names from existing data
-        const stateObj = states.find(s => s.id.toString() === selectedState.toString());
-        const lgaObj = lgas.find(l => l.id.toString() === selectedLga.toString());
+        const stateObj = states.find(s => s.id.toString() === editModalSelectedState.toString());
+        const lgaObj = lgas.find(l => l.id.toString() === editModalSelectedLga.toString());
         
         // Create updated Farmer with all required fields
         const updatedFarmer = {
@@ -289,11 +366,11 @@ const FarmersTable = () => {
           ageBracket,
           msp: {
             ...selectedFarmer.msp,
-            hub: selectedState,
+            hub: editModalSelectedState,
           },
           subhubs: {
             ...selectedFarmer.subhubs,
-            hubId: selectedLga,
+            hubId: editModalSelectedLga,
           }
         };
         
@@ -322,7 +399,7 @@ const FarmersTable = () => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    if (!selectedState || !selectedLga) {
+    if (!modalSelectedState || !modalSelectedLga) {
       setError("Please select both state and LGA");
       setIsSubmitting(false);
       return;
@@ -337,8 +414,8 @@ const FarmersTable = () => {
         alternatePhoneNumber,
         gender,
         ageBracket,
-        hub: selectedState,
-        subHub: selectedLga,
+        hub: modalSelectedState,
+        subHub: modalSelectedLga,
       };
       
       const response = await api.post('/farmers', payload);
@@ -407,9 +484,9 @@ const FarmersTable = () => {
                 ))}
               </select>
             </div>
-            
+
             <div className="col-12 col-md-6 col-lg-3">
-              <label htmlFor="lgaFilter" className="form-label">Filter by Sub-Hubs</label>
+              <label htmlFor="lgaFilter" className="form-label">Filter by Hubs</label>
               <select
                 id="lgaFilter"
                 className="form-select"
@@ -417,7 +494,7 @@ const FarmersTable = () => {
                 onChange={(e) => setSelectedLga(e.target.value)}
                 disabled={!selectedState || lgas.length === 0}
               >
-                <option value="">All Sub-Hubs</option>
+                <option value="">All Hubs</option>
                 {lgas.map((lga) => (
                   <option key={lga.id} value={lga.id}>
                     {lga.name}
@@ -425,7 +502,7 @@ const FarmersTable = () => {
                 ))}
               </select>
             </div>
-            
+
             <div className="col-12 col-md-6 col-lg-4">
               <label htmlFor="searchFarmer" className="form-label">Search by Name or Phone</label>
               <div className="input-group">
@@ -474,12 +551,14 @@ const FarmersTable = () => {
                 <table className="table border-primary-table mb-0">
                   <thead>
                     <tr>
+                      <th scope="col">SN</th>
                       <th scope="col">Farmer ID</th>
                       <th scope="col">Name</th>
                       <th scope="col">Phone</th>
                       <th scope="col">Gender</th>
                       <th scope="col">Age Bracket</th>
-                      <th scope="col">Sub-Hub</th>
+                      <th scope="col">Hub</th>
+                      {/* <th scope="col">Community</th> */}
                       <th scope="col">Actions</th>
                     </tr>
                   </thead>
@@ -487,17 +566,14 @@ const FarmersTable = () => {
                     {displayedFarmers.length > 0 ? (
                       displayedFarmers.map((farmer, index) => (
                         <tr key={farmer.farmerId || index}>
-                          <td>
-                            {/* {(pagination.currentPage - 1) * pagination.perPage + index + 1} */}
-                            {farmer.farmerId || 'N/A'}
-                          </td>
+                          <td>{(pagination.currentPage - 1) * pagination.perPage + index + 1}</td>
+                          <td>{farmer.farmerId || 'N/A'}</td>
                           <td>{`${farmer.farmerFirstName || ''} ${farmer.farmerLastName || ''} ${farmer.farmerOtherNames || ''}`}</td>
                           <td>{farmer.phoneNumber || 'N/A'}</td>
                           <td>{farmer.gender || 'N/A'}</td>
                           <td>{farmer.ageBracket || 'N/A'}</td>
-                          <td>
-                            {farmer.subhubs?.subHubName || 'N/A'}
-                          </td>
+                          <td>{farmer.hubs?.lgas?.lgaName || 'N/A'}</td>
+                          {/* <td>{farmer.hubs?.subhub?.subHubName || 'N/A'}</td> */}
                           <td>
                             <div className="d-flex">
                               <button
@@ -527,7 +603,7 @@ const FarmersTable = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="7" className="text-center py-4">
+                        <td colSpan="9" className="text-center py-4">
                           No Farmers found matching your criteria
                         </td>
                       </tr>
@@ -739,8 +815,8 @@ const FarmersTable = () => {
                       <select
                         id="state"
                         className="form-select"
-                        value={selectedState}
-                        onChange={(e) => setSelectedState(e.target.value)}
+                        value={modalSelectedState}
+                        onChange={(e) => setModalSelectedState(e.target.value)}
                         disabled={isSubmitting}
                         required
                       >
@@ -754,16 +830,16 @@ const FarmersTable = () => {
                     )}
                   </div>
                   <div className="mb-3">
-                    <label htmlFor="lga" className="form-label">Sub-Hub</label>
+                    <label htmlFor="lga" className="form-label">Hub</label>
                     <select
                       id="lga"
                       className="form-select"
-                      value={selectedLga}
-                      onChange={(e) => setSelectedLga(e.target.value)}
-                      disabled={!selectedState || lgas.length === 0 || isSubmitting}
+                      value={modalSelectedLga}
+                      onChange={(e) => setModalSelectedLga(e.target.value)}
+                      disabled={!modalSelectedState || lgas.length === 0 || isSubmitting}
                       required
                     >
-                      <option value="">Select Sub-Hub</option>
+                      <option value="">Select Hub</option>
                       {lgas.map((lga) => (
                         <option key={lga.id} value={lga.id}>
                           {lga.name}
@@ -788,7 +864,7 @@ const FarmersTable = () => {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={!selectedState || !selectedLga || isSubmitting}
+                      disabled={!modalSelectedState || !modalSelectedLga || isSubmitting}
                     >
                       {isSubmitting ? (
                         <>
@@ -844,13 +920,13 @@ const FarmersTable = () => {
                 <div className="mb-3">
                   <label className="form-label">State</label>
                   <p className="form-control-static">
-                    {states.find(s => s.id === selectedFarmer?.msp?.hub)?.name || 'N/A'}
+                    {selectedFarmer?.hubs?.states?.stateName || 'N/A'}
                   </p>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Sub-Hub</label>
+                  <label className="form-label">Hub</label>
                   <p className="form-control-static">
-                    {selectedFarmer?.subhubs?.subHubName || 'N/A'}
+                    {selectedFarmer?.hubs?.subhub?.subHubName || 'N/A'}
                   </p>
                 </div>
                 <div className="mb-3">
@@ -992,8 +1068,8 @@ const FarmersTable = () => {
                     <select
                       id="editState"
                       className="form-select"
-                      value={selectedState}
-                      onChange={(e) => setSelectedState(e.target.value)}
+                      value={editModalSelectedState}
+                      onChange={(e) => setEditModalSelectedState(e.target.value)}
                       disabled={isSubmitting}
                       required
                     >
@@ -1006,16 +1082,16 @@ const FarmersTable = () => {
                     </select>
                   </div>
                   <div className="mb-3">
-                    <label htmlFor="editLga" className="form-label">Sub-Hub</label>
+                    <label htmlFor="editLga" className="form-label">Hub</label>
                     <select
                       id="editLga"
                       className="form-select"
-                      value={selectedLga}
-                      onChange={(e) => setSelectedLga(e.target.value)}
-                      disabled={!selectedState || lgas.length === 0 || isSubmitting}
+                      value={editModalSelectedLga}
+                      onChange={(e) => setEditModalSelectedLga(e.target.value)}
+                      disabled={!editModalSelectedState || lgas.length === 0 || isSubmitting}
                       required
                     >
-                      <option value="">Select Sub-Hub</option>
+                      <option value="">Select Hub</option>
                       {lgas.map((lga) => (
                         <option key={lga.id} value={lga.id}>
                           {lga.name}
@@ -1040,7 +1116,7 @@ const FarmersTable = () => {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={isSubmitting}
+                      disabled={!editModalSelectedState || !editModalSelectedLga || isSubmitting}
                     >
                       {isSubmitting ? (
                         <>

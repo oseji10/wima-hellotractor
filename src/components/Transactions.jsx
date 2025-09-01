@@ -33,18 +33,18 @@ const Transactions = () => {
   const [formData, setFormData] = useState({
     msp: "",
     farmer: "",
-    transactionType: "SERVICE",
+    transactionType: "Service",
     totalCost: "",
-    transactionStatus: "PAID",
-    paymentMethod: "CASH",
+    transactionStatus: "Paid",
+    paymentMethod: "Cash",
     hub: "",
     transaction_commodity: []
   });
 
   // Status colors mapping
   const statusColors = {
-    PAID: "bg-green text-green",
-    PENDING: "bg-yellow text-yellow",
+    Paid: "bg-green text-green dark:text-green dark:bg-green",
+    Pending: "bg-yellow text-yellow",
     FAILED: "bg-red text-red",
   };
 
@@ -207,10 +207,10 @@ const handleAddService = (service) => {
         setFormData({
           msp: "",
           farmer: "",
-          transactionType: "SERVICE",
+          transactionType: "Service",
           totalCost: "",
-          transactionStatus: "PAID",
-          paymentMethod: "CASH",
+          transactionStatus: "Paid",
+          paymentMethod: "Cash",
           hub: "",
           transaction_commodity: []
         });
@@ -317,7 +317,8 @@ const handleAddService = (service) => {
                     {transactions.length > 0 ? (
                       transactions.map((transaction, index) => (
                         <tr key={transaction.transactionId || index}>
-                          <td>{transaction.transactionId}</td>
+                          {/* <td>{transaction.transactionId}</td> */}
+                          <td>{(pagination.currentPage - 1) * pagination.perPage + index + 1}</td>
                           <td>{transaction.transactionReference}</td>
                           <td>{transaction.msp}</td>
                           <td>
@@ -329,9 +330,18 @@ const handleAddService = (service) => {
                           <td>{transaction.transactionType}</td>
                           <td>{transaction.totalCost}</td>
                           <td>
-                            <span className={`badge ${statusColors[transaction.transactionStatus] || 'bg-gray-100 text-gray-800'}`}>
-                              {transaction.transactionStatus}
-                            </span>
+                         <span
+  className={`px-3 py-1 rounded-full text-sm font-medium ${
+    transaction.transactionStatus === "Paid"
+      ? "bg-green text-green"
+      : transaction.transactionStatus === "pending"
+      ? "bg-yellow-100 text-yellow-700"
+      : "bg-gray-100 text-gray-700"
+  }`}
+>
+  {transaction.transactionStatus}
+</span>
+
                           </td>
                           <td>{formatDate(transaction.created_at)}</td>
                           <td>
@@ -530,9 +540,9 @@ const handleAddService = (service) => {
                   onChange={(e) => setFormData({...formData, transactionStatus: e.target.value})}
                   required
                 >
-                  <option value="PAID">Paid</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="FAILED">Failed</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Failed">Failed</option>
                 </select>
               </div>
               

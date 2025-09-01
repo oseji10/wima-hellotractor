@@ -457,6 +457,7 @@ const MSPSTable = () => {
                 <table className="table border-primary-table mb-0">
                   <thead>
                     <tr>
+                      <th scope="col">SN</th>
                       <th scope="col">MSP ID</th>
                       <th scope="col">Name</th>
                       <th scope="col">Phone</th>
@@ -469,6 +470,7 @@ const MSPSTable = () => {
                     {displayedMsps.length > 0 ? (
                       displayedMsps.map((msp, index) => (
                         <tr key={msp.id || index}>
+                          <td>{(pagination.currentPage - 1) * pagination.perPage + index + 1}</td>
                           <td>
                             {/* {(pagination.currentPage - 1) * pagination.perPage + index + 1} */}
                             {msp.mspId || 'N/A'}
@@ -479,7 +481,7 @@ const MSPSTable = () => {
                             {states.find(s => s.id === msp.hub?.state)?.name || 'N/A'}
                           </td>
                           <td>
-                            {lgas.find(l => l.id === msp.hub?.lga)?.name || 'N/A'}
+                            {msp.hub?.lgas?.lgaName || 'N/A'}
                           </td>
                           <td>
                             <div className="d-flex">

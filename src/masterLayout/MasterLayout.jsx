@@ -7,6 +7,7 @@ import Link from "next/link";
 import api from "../../lib/api";
 import { Box, CircularProgress } from '@mui/material';
 import Image from "next/image";
+import { getRole } from "../../lib/auth";
 
 const MasterLayout = ({ children }) => {
   const pathname = usePathname();
@@ -14,8 +15,8 @@ const MasterLayout = ({ children }) => {
   const [sidebarActive, setSidebarActive] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(null); // null indicates loading
-  const [role, setRole] = useState('');
   const [name, setName] = useState('');
+  const [role, setRole] = useState('');
 
   const refreshToken = useCallback(async () => {
     try {
@@ -148,6 +149,277 @@ const MasterLayout = ({ children }) => {
     setMobileMenu(!mobileMenu);
   };
 
+  // Function to render menu items based on role
+  const renderMenuItems = () => {
+    const currentRole = role || getRole();
+    
+    // Common menu items for all roles
+    const commonItems = [
+      <li key="dashboard" className="">
+        <Link href="/dashboard">
+          <Icon
+            icon="solar:home-smile-angle-outline"
+            className="menu-icon"
+          />
+          <span>Dashboard</span>
+        </Link>
+      </li>
+    ];
+
+    // Role-specific menu items
+    let roleSpecificItems = [];
+    
+    if (currentRole === 'ADMIN' || currentRole === 'SUPER ADMIN') {
+      roleSpecificItems = [
+        <li key="hubs">
+          <Link href="/dashboard/users">
+            <Icon
+              icon="ph:users-four"
+              className="menu-icon"
+            />
+            <span>Users</span>
+          </Link>
+        </li>,
+        <li key="hubs">
+          <Link href="/dashboard/active-locations">
+            <Icon
+              icon="solar:map-point-linear"
+              className="menu-icon"
+            />
+            <span>Hubs</span>
+          </Link>
+        </li>,
+        <li key="msps">
+          <Link href="/dashboard/msps">
+            <Icon
+              icon="solar:users-group-rounded-line-duotone"
+              className="menu-icon"
+            />
+            <span>MSPs</span>
+          </Link>
+        </li>,
+        <li key="farmers">
+          <Link href="/dashboard/farmers">
+            <Icon
+              icon="healthicons:agriculture-worker-outline"
+              className="menu-icon"
+            />
+            <span>Farmers</span>
+          </Link>
+        </li>,
+        <li key="services">
+          <Link href="/dashboard/services">
+            <Icon
+              icon="vaadin:handshake"
+              className="menu-icon"
+            />
+            <span>Services</span>
+          </Link>
+        </li>,
+        <li key="commodities">
+          <Link href="/dashboard/commodities">
+            <Icon
+              icon="ph:grains"
+              className="menu-icon"
+            />
+            <span>Commodities</span>
+          </Link>
+        </li>,
+        <li key="transactions">
+          <Link href="/dashboard/transactions">
+            <Icon
+              icon="bitcoin-icons:transactions-filled"
+              className="menu-icon"
+            />
+            <span>Transactions</span>
+          </Link>
+        </li>,
+        <li key="memberships">
+          <Link href="/dashboard/memberships">
+            <Icon
+              icon="cil:badge"
+              className="menu-icon"
+            />
+            <span>Memberships</span>
+          </Link>
+        </li>,
+        <li key="investors">
+          <Link href="/dashboard/investors">
+            <Icon
+              icon="material-symbols-light:money-bag-outline"
+              className="menu-icon"
+            />
+            <span>Investors</span>
+          </Link>
+        </li>,
+        <li key="equipment">
+          <Link href="/dashboard/equipment">
+            <Icon
+              icon="fluent:vehicle-tractor-24-regular"
+              className="menu-icon"
+            />
+            <span>Equipment</span>
+          </Link>
+        </li>,
+        <li key="bookings">
+          <Link href="/dashboard/bookings">
+            <Icon
+              icon="majesticons:clock-line"
+              className="menu-icon"
+            />
+            <span>Bookings</span>
+          </Link>
+        </li>,
+        <li key="payments">
+          <Link href="/dashboard/payments">
+            <Icon
+              icon="material-symbols-light:payments-outline"
+              className="menu-icon"
+            />
+            <span>Payments</span>
+          </Link>
+        </li>,
+        <li key="track-equipment">
+          <Link href="/dashboard/track-equipment">
+            <Icon
+              icon="carbon:storm-tracker"
+              className="menu-icon"
+            />
+            <span>Track Equipment</span>
+          </Link>
+        </li>,
+        <li key="analytics">
+          <Link href="/dashboard/analytics">
+            <Icon icon="solar:pie-chart-outline" className="menu-icon" />
+            <span>Analytics</span>
+          </Link>
+        </li>
+      ];
+    } else if (currentRole === 'MSP') {
+      roleSpecificItems = [
+        <li key="farmers">
+          <Link href="/dashboard/farmers">
+            <Icon
+              icon="healthicons:agriculture-worker-outline"
+              className="menu-icon"
+            />
+            <span>Farmers</span>
+          </Link>
+        </li>,
+        <li key="services">
+          <Link href="/dashboard/services">
+            <Icon
+              icon="vaadin:handshake"
+              className="menu-icon"
+            />
+            <span>Services</span>
+          </Link>
+        </li>,
+        <li key="equipment">
+          <Link href="/dashboard/equipment">
+            <Icon
+              icon="fluent:vehicle-tractor-24-regular"
+              className="menu-icon"
+            />
+            <span>Equipment</span>
+          </Link>
+        </li>,
+        <li key="bookings">
+          <Link href="/dashboard/bookings">
+            <Icon
+              icon="majesticons:clock-line"
+              className="menu-icon"
+            />
+            <span>Bookings</span>
+          </Link>
+        </li>,
+        <li key="track-equipment">
+          <Link href="/dashboard/track-equipment">
+            <Icon
+              icon="carbon:storm-tracker"
+              className="menu-icon"
+            />
+            <span>Track Equipment</span>
+          </Link>
+        </li>
+      ];
+    } else if (currentRole === 'National Coordinator' || currentRole === 'State Coordinator') {
+      roleSpecificItems = [
+        <li key="hubs">
+          <Link href="/dashboard/active-locations">
+            <Icon
+              icon="solar:map-point-linear"
+              className="menu-icon"
+            />
+            <span>Hubs</span>
+          </Link>
+        </li>,
+        <li key="msps">
+          <Link href="/dashboard/msps">
+            <Icon
+              icon="solar:users-group-rounded-line-duotone"
+              className="menu-icon"
+            />
+            <span>MSPs</span>
+          </Link>
+        </li>,
+        <li key="farmers">
+          <Link href="/dashboard/farmers">
+            <Icon
+              icon="healthicons:agriculture-worker-outline"
+              className="menu-icon"
+            />
+            <span>Farmers</span>
+          </Link>
+        </li>,
+        <li key="analytics">
+          <Link href="/dashboard/analytics">
+            <Icon icon="solar:pie-chart-outline" className="menu-icon" />
+            <span>Analytics</span>
+          </Link>
+        </li>
+      ];
+    } else if (currentRole === 'Community Lead') {
+      roleSpecificItems = [
+        <li key="farmers">
+          <Link href="/dashboard/farmers">
+            <Icon
+              icon="healthicons:agriculture-worker-outline"
+              className="menu-icon"
+            />
+            <span>Farmers</span>
+          </Link>
+        </li>,
+        <li key="services">
+          <Link href="/dashboard/services">
+            <Icon
+              icon="vaadin:handshake"
+              className="menu-icon"
+            />
+            <span>Services</span>
+          </Link>
+        </li>,
+      
+      ];
+    }
+
+       const commonItems2 = [
+        <li key="feedback">
+          <Link href="/dashboard/feedback">
+            <Icon icon="fluent-mdl2:feedback" className="menu-icon" />
+            <span>Feedback</span>
+          </Link>
+        </li>,
+      <li key="help">
+        <Link href="/dashboard/help">
+          <Icon icon="material-symbols:help-outline-rounded" className="menu-icon" />
+          <span>Help</span>
+        </Link>
+      </li>
+    ];
+    return [...commonItems, ...roleSpecificItems, ...commonItems2];
+  };
+
   // Render loading state
   if (isAuthenticated === null) {
     return (
@@ -179,969 +451,23 @@ const MasterLayout = ({ children }) => {
         </button>
         <div>
           <Link href="/" className="sidebar-logo">
-            {/* <img
-              src="assets/images/logo.png"
-              alt="site logo"
+            <Image 
               className="light-logo"
-            /> */}
-            {/* <img
-              src="assets/images/logo-light.png"
-              alt="site logo"
+              src="/assets/images/wima-logo.svg" alt="Home Icon" width={300} height={70} 
+            />
+            <Image 
               className="dark-logo"
-            /> */}
-            {/* <img
-              src="assets/images/logo-icon.png"
-              alt="site logo"
+              src="/assets/images/wima-logo.svg" alt="Home Icon" width={300} height={70} 
+            />
+            <Image 
               className="logo-icon"
-            /> */}
-
-            <Image 
-            className="light-logo"
-            src="/assets/images/wima-logo.svg" alt="Home Icon" width={300} height={70} 
-            />
-
-            <Image 
-            className="dark-logo"
-            src="/assets/images/wima-logo.svg" alt="Home Icon" width={300} height={70} 
-            />
-
-            <Image 
-            className="logo-icon"
-            src="/assets/images/wima-logo.svg" alt="Home Icon" width={300} height={70} 
+              src="/assets/images/wima-logo.svg" alt="Home Icon" width={300} height={70} 
             />
           </Link>
         </div>
         <div className="sidebar-menu-area">
           <ul className="sidebar-menu" id="sidebar-menu">
-            <li className="">
-              <Link href="/dashboard">
-                <Icon
-                  icon="solar:home-smile-angle-outline"
-                  className="menu-icon"
-                />
-                <span>Dashboard</span>
-              </Link>
-              {/* <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/dashboard/"
-                    className={pathname === "/" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    AI
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/index-2"
-                    className={pathname === "/index-2" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    CRM
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/index-3"
-                    className={pathname === "/index-3" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    eCommerce
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/index-4"
-                    className={pathname === "/index-4" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-danger-main w-auto" />
-                    Cryptocurrency
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/index-5"
-                    className={pathname === "/index-5" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-success-main w-auto" />
-                    Investment
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/index-6"
-                    className={pathname === "/index-6" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-purple w-auto" />
-                    LMS
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/index-7"
-                    className={pathname === "/index-7" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    NFT & Gaming
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/index-8"
-                    className={pathname === "/index-8" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    Medical
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/index-9"
-                    className={pathname === "/index-9" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    Analytics
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/index-10"
-                    className={pathname === "/index-10" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    POS & Inventory
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard/index-11"
-                    className={pathname === "/index-11" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    Finance & Banking
-                  </Link>
-                </li>
-              </ul> */}
-            </li>
-
-            {/* <li className="sidebar-menu-group-title">Application</li>
-            <li>
-              <Link
-                href="/dashboard/email"
-                className={pathname === "/email" ? "active-page" : ""}
-              >
-                <Icon icon="mage:email" className="menu-icon" />
-                <span>Email</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/dashboard/chat-message"
-                className={pathname === "/chat-message" ? "active-page" : ""}
-              >
-                <Icon icon="bi:chat-dots" className="menu-icon" />
-                <span>Chat</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/dashboard/calendar-main"
-                className={pathname === "/calendar-main" ? "active-page" : ""}
-              >
-                <Icon icon="solar:calendar-outline" className="menu-icon" />
-                <span>Calendar</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/dashboard/kanban"
-                className={pathname === "/kanban" ? "active-page" : ""}
-              >
-                <Icon
-                  icon="material-symbols:map-outline"
-                  className="menu-icon"
-                />
-                <span>Kanban</span>
-              </Link>
-            </li> */}
-
-            {/* Invoice Dropdown */}
-            {/* <li className="dropdown">
-              <Link href="#">
-                <Icon icon="hugeicons:invoice-03" className="menu-icon" />
-                <span>Invoice</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/dashboard/invoice-list"
-                    className={pathname === "/invoice-list" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    List
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/invoice-preview"
-                    className={pathname === "/invoice-preview" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Preview
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/invoice-add"
-                    className={pathname === "/invoice-add" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    Add new
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/invoice-edit"
-                    className={pathname === "/invoice-edit" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-danger-main w-auto" />
-                    Edit
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
-
-            {/* Ai Application Dropdown */}
-            {/* <li className="dropdown">
-              <Link href="#">
-                <i className="ri-robot-2-line mr-10" />
-                <span>Ai Application</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/text-generator"
-                    className={pathname === "/text-generator" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    Text Generator
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/code-generator"
-                    className={pathname === "/code-generator" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Code Generator
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/image-generator"
-                    className={pathname === "/image-generator" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    Image Generator
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/voice-generator"
-                    className={pathname === "/voice-generator" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-danger-main w-auto" />
-                    Voice Generator
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/video-generator"
-                    className={pathname === "/video-generator" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-success-main w-auto" />
-                    Video Generator
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
-
-            {/* Crypto Currency Dropdown */}
-            {/* <li className="dropdown">
-              <Link href="#">
-                <i className="ri-robot-2-line mr-10" />
-                <span>Crypto Currency</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/wallet"
-                    className={pathname === "/wallet" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    Wallet
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/marketplace"
-                    className={pathname === "/marketplace" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Marketplace
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/marketplace-details"
-                    className={pathname === "/marketplace-details" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Marketplace Details
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/portfolio"
-                    className={pathname === "/portfolio" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Portfolios
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
-
-            {/* <li className="sidebar-menu-group-title">UI Elements</li> */}
-
-            {/* Components Dropdown */}
-            <li>
-              <Link href="/dashboard/active-locations">
-                <Icon
-                  icon="solar:map-point-linear"
-                  className="menu-icon"
-                />
-                <span>Hubs</span>
-              </Link>
-            </li>
-
-             <li>
-              <Link href="/dashboard/msps">
-                <Icon
-                  icon="solar:users-group-rounded-line-duotone"
-                  className="menu-icon"
-                />
-                <span>MSPs</span>
-              </Link>
-            </li>
-
-              <li>
-              <Link href="/dashboard/farmers">
-                <Icon
-                  icon="healthicons:agriculture-worker-outline"
-                  className="menu-icon"
-                />
-                <span>Farmers</span>
-              </Link>
-            </li>
-
-            
-             <li>
-              <Link href="/dashboard/services">
-                <Icon
-                  icon="vaadin:handshake"
-                  className="menu-icon"
-                />
-                <span>Services</span>
-              </Link>
-            </li>
-
-              <li>
-              <Link href="/dashboard/commodities">
-                <Icon
-                  icon="ph:grains"
-                  className="menu-icon"
-                />
-                <span>Commodities</span>
-              </Link>
-            </li>
-
-
-            <li>
-              <Link href="/dashboard/transactions">
-                <Icon
-                  icon="bitcoin-icons:transactions-filled"
-                  className="menu-icon"
-                />
-                <span>Transactions</span>
-              </Link>
-            </li>
-
-            
-            <li>
-              <Link href="/dashboard/memberships">
-                <Icon
-                  icon="cil:badge"
-                  className="menu-icon"
-                />
-                <span>Memberships</span>
-              </Link>
-            </li>
-
-             <li>
-              <Link href="/dashboard/investors">
-                <Icon
-                  icon="material-symbols-light:money-bag-outline"
-                  className="menu-icon"
-                />
-                <span>Investors</span>
-              </Link>
-            </li>
-
-            
-
-
-
-             <li>
-              <Link href="/dashboard/equipment">
-                <Icon
-                  icon="fluent:vehicle-tractor-24-regular"
-                  className="menu-icon"
-                />
-                <span>Equipment</span>
-              </Link>
-            </li>
-
-           
-
-             <li>
-              <Link href="/dashboard/equipment">
-                <Icon
-                  icon="majesticons:clock-line"
-                  className="menu-icon"
-                />
-                <span>Bookings</span>
-              </Link>
-            </li>
-            
-             
-
-             <li>
-              <Link href="/dashboard/transactions">
-                <Icon
-                  icon="material-symbols-light:payments-outline"
-                  className="menu-icon"
-                />
-                <span>Payments</span>
-              </Link>
-            </li>
-
-            <li>
-              <Link href="/dashboard/transactions">
-                <Icon
-                  icon="carbon:storm-tracker"
-                  className="menu-icon"
-                />
-                <span>Track Equipment</span>
-              </Link>
-            </li>
-
-
-            <li>
-              <Link href="/dashboard/analytics">
-                <Icon icon="solar:pie-chart-outline" className="menu-icon" />
-                <span>Analytics</span>
-              </Link>
-            </li>
-
-            {/* Forms Dropdown */}
-            {/* <li className="dropdown">
-              <Link href="#">
-                <Icon icon="heroicons:document" className="menu-icon" />
-                <span>Forms</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/form"
-                    className={pathname === "/form" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    Input Forms
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/form-layout"
-                    className={pathname === "/form-layout" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Input Layout
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/form-validation"
-                    className={pathname === "/form-validation" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-success-main w-auto" />
-                    Form Validation
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/wizard"
-                    className={pathname === "/wizard" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-danger-main w-auto" />
-                    Form Wizard
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
-
-            {/* Table Dropdown */}
-            {/* <li className="dropdown">
-              <Link href="#">
-                <Icon icon="mingcute:storage-line" className="menu-icon" />
-                <span>Table</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/table-basic"
-                    className={pathname === "/table-basic" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    Basic Table
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/table-data"
-                    className={pathname === "/table-data" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Data Table
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
-
-            {/* Chart Dropdown */}
-            {/* <li className="dropdown">
-              <Link href="#">
-                <Icon icon="solar:pie-chart-outline" className="menu-icon" />
-                <span>Chart</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/line-chart"
-                    className={pathname === "/line-chart" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-danger-main w-auto" />
-                    Line Chart
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/column-chart"
-                    className={pathname === "/column-chart" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Column Chart
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/pie-chart"
-                    className={pathname === "/pie-chart" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-success-main w-auto" />
-                    Pie Chart
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
-
-            {/* <li>
-              <Link
-                href="/widgets"
-                className={pathname === "/widgets" ? "active-page" : ""}
-              >
-                <Icon icon="fe:vector" className="menu-icon" />
-                <span>Widgets</span>
-              </Link>
-            </li> */}
-
-            {/* Users Dropdown */}
-            {/* <li className="dropdown">
-              <Link href="#">
-                <Icon
-                  icon="flowbite:users-group-outline"
-                  className="menu-icon"
-                />
-                <span>Users</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/users-list"
-                    className={pathname === "/users-list" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    Users List
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/users-grid"
-                    className={pathname === "/users-grid" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Users Grid
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/add-user"
-                    className={pathname === "/add-user" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    Add User
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/view-profile"
-                    className={pathname === "/view-profile" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-danger-main w-auto" />
-                    View Profile
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
-
-            {/* Role & Access Dropdown */}
-            {/* <li className="dropdown">
-              <Link href="#">
-                <i className="ri-user-settings-line" />
-                <span>Role & Access</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/role-access"
-                    className={pathname === "/role-access" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    Role & Access
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/assign-role"
-                    className={pathname === "/assign-role" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Assign Role
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
-
-            {/* <li className="sidebar-menu-group-title">Application</li> */}
-
-            {/* Authentication Dropdown */}
-            {/* <li className="dropdown">
-              <Link href="#">
-                <Icon icon="simple-line-icons:vector" className="menu-icon" />
-                <span>Authentication</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/sign-in"
-                    className={pathname === "/sign-in" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    Sign In
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/sign-up"
-                    className={pathname === "/sign-up" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Sign Up
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/forgot-password"
-                    className={pathname === "/forgot-password" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    Forgot Password
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
-
-            {/* <li className="dropdown">
-              <Link href="#">
-                <Icon
-                  icon="flowbite:users-group-outline"
-                  className="menu-icon"
-                />
-                <span>Gallery</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/gallery-grid"
-                    className={pathname === "/gallery-grid" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    Gallery Grid
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/gallery"
-                    className={pathname === "/gallery" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Gallery Grid Desc
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/gallery-masonry"
-                    className={pathname === "/gallery-masonry" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    Gallery Grid
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/gallery-hover"
-                    className={pathname === "/gallery-hover" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-danger-main w-auto" />
-                    Gallery Hover Effect
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
-            {/* <li>
-              <Link
-                href="/pricing"
-                className={pathname === "/pricing" ? "active-page" : ""}
-              >
-                <Icon
-                  icon="hugeicons:money-send-square"
-                  className="menu-icon"
-                />
-                <span>Pricing</span>
-              </Link>
-            </li> */}
-
-            {/* Blog */}
-            {/* <li className="dropdown">
-              <Link href="#">
-                <Icon
-                  icon="flowbite:users-group-outline"
-                  className="menu-icon"
-                />
-                <span>Blog</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/blog"
-                    className={pathname === "/blog" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    Blog
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/blog-details"
-                    className={pathname === "/blog-details" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Blog Details
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/add-blog"
-                    className={pathname === "/add-blog" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    Add Blog
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
-
-            {/* <li>
-              <Link
-                href="/testimonials"
-                className={pathname === "/testimonials" ? "active-page" : ""}
-              >
-                <Icon icon="ri-star-line" className="menu-icon" />
-                <span>Testimonials</span>
-              </Link>
-            </li> */}
-            {/* <li>
-              <Link
-                href="/faq"
-                className={pathname === "/faq" ? "active-page" : ""}
-              >
-                <Icon
-                  icon="mage:message-question-mark-round"
-                  className="menu-icon"
-                />
-                <span>FAQs.</span>
-              </Link>
-            </li> */}
-            {/* <li>
-              <Link
-                href="/error"
-                className={pathname === "/error" ? "active-page" : ""}
-              >
-                <Icon icon="streamline:straight-face" className="menu-icon" />
-                <span>404</span>
-              </Link>
-            </li> */}
-            {/* <li>
-              <Link
-                href="/terms-condition"
-                className={pathname === "/terms-condition" ? "active-page" : ""}
-              >
-                <Icon icon="octicon:info-24" className="menu-icon" />
-                <span>Terms & Conditions</span>
-              </Link>
-            </li> */}
-            {/* <li>
-              <Link
-                href="/coming-soon"
-                className={pathname === "/coming-soon" ? "active-page" : ""}
-              >
-                <i className="ri-rocket-line menu-icon"></i>
-                <span>Coming Soon</span>
-              </Link>
-            </li> */}
-            {/* <li>
-              <Link
-                href="/access-denied"
-                className={pathname === "/access-denied" ? "active-page" : ""}
-              >
-                <i className="ri-folder-lock-line menu-icon"></i>
-                <span>Access Denied</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/maintenance"
-                className={pathname === "/maintenance" ? "active-page" : ""}
-              >
-                <i className="ri-hammer-line menu-icon"></i>
-                <span>Maintenance</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/blank-page"
-                className={pathname === "/blank-page" ? "active-page" : ""}
-              >
-                <i className="ri-checkbox-multiple-blank-line menu-icon"></i>
-                <span>Blank Page</span>
-              </Link>
-            </li> */}
-
-            {/* Settings Dropdown */}
-            {/* <li className="dropdown">
-              <Link href="#">
-                <Icon
-                  icon="icon-park-outline:setting-two"
-                  className="menu-icon"
-                />
-                <span>Settings</span>
-              </Link>
-              <ul className="sidebar-submenu">
-                <li>
-                  <Link
-                    href="/company"
-                    className={pathname === "/company" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-primary-600 w-auto" />
-                    Company
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/notification"
-                    className={pathname === "/notification" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-warning-main w-auto" />
-                    Notification
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/notification-alert"
-                    className={pathname === "/notification-alert" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-info-main w-auto" />
-                    Notification Alert
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/theme"
-                    className={pathname === "/theme" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-danger-main w-auto" />
-                    Theme
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/currencies"
-                    className={pathname === "/currencies" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-danger-main w-auto" />
-                    Currencies
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/language"
-                    className={pathname === "/language" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-danger-main w-auto" />
-                    Languages
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/payment-gateway"
-                    className={pathname === "/payment-gateway" ? "active-page" : ""}
-                  >
-                    <i className="ri-circle-fill circle-icon text-danger-main w-auto" />
-                    Payment Gateway
-                  </Link>
-                </li>
-              </ul>
-            </li> */}
+            {renderMenuItems()}
           </ul>
         </div>
       </aside>
