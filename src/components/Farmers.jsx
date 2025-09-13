@@ -9,11 +9,14 @@ const FarmersTable = () => {
   const [displayedFarmers, setDisplayedFarmers] = useState([]);
   const [states, setStates] = useState([]);
   const [lgas, setLgas] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [selectedState, setSelectedState] = useState("");
   const [selectedLga, setSelectedLga] = useState("");
+  const [selectedProject, setSelectedProject] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingFarmers, setLoadingFarmers] = useState(false);
+  const [loadingProjects, setLoadingProjects] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [firstName, setFirstName] = useState("");
@@ -38,8 +41,10 @@ const FarmersTable = () => {
   const [activeHubs, setActiveHubs] = useState([]);
   const [modalSelectedState, setModalSelectedState] = useState("");
   const [modalSelectedLga, setModalSelectedLga] = useState("");
+  const [modalSelectedProject, setModalSelectedProject] = useState("");
   const [editModalSelectedState, setEditModalSelectedState] = useState("");
   const [editModalSelectedLga, setEditModalSelectedLga] = useState("");
+  const [editModalSelectedProject, setEditModalSelectedProject] = useState("");
 
   // Fetch active hubs data
   useEffect(() => {
@@ -80,6 +85,30 @@ const FarmersTable = () => {
     fetchActiveHubs();
   }, []);
 
+  // Fetch projects data
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoadingProjects(true);
+      setError(null);
+      try {
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
+        const data = response.data || response;
+        const projectsData = Array.isArray(data.data) ? data.data.map(project => ({
+          id: project.projectId,
+          name: project.projectName
+        })) : [];
+        setProjects(projectsData);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+        setError("Failed to load projects. Please try again.");
+        setProjects([]);
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+    fetchProjects();
+  }, []);
+
   // Fetch Farmers with filtering and pagination
   useEffect(() => {
     const fetchFarmers = async () => {
@@ -93,13 +122,14 @@ const FarmersTable = () => {
         // Add filter params if any filter is active
         if (selectedState) params.state = selectedState;
         if (selectedLga) params.lga = selectedLga;
+        if (selectedProject) params.projectId = selectedProject;
         if (searchTerm) params.search = searchTerm;
 
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/farmers`, { params });
         const data = response.data;
         const farmersData = Array.isArray(data.data) ? data.data : [];
 
-        if (selectedState || selectedLga || searchTerm) {
+        if (selectedState || selectedLga || selectedProject || searchTerm) {
           // Using backend filtering
           setDisplayedFarmers(farmersData);
           setIsFiltered(true);
@@ -125,11 +155,11 @@ const FarmersTable = () => {
       }
     };
     fetchFarmers();
-  }, [pagination.currentPage, pagination.perPage, selectedState, selectedLga, searchTerm]);
+  }, [pagination.currentPage, pagination.perPage, selectedState, selectedLga, selectedProject, searchTerm]);
 
   // Apply frontend filtering when we have all data and filters are active
   useEffect(() => {
-    if (!isFiltered && (selectedState || selectedLga || searchTerm)) {
+    if (!isFiltered && (selectedState || selectedLga || selectedProject || searchTerm)) {
       let filtered = [...allFarmers];
       
       if (selectedState) {
@@ -141,6 +171,12 @@ const FarmersTable = () => {
       if (selectedLga) {
         filtered = filtered.filter(farmer => 
           farmer.subhubs?.hubId?.toString() === selectedLga.toString()
+        );
+      }
+      
+      if (selectedProject) {
+        filtered = filtered.filter(farmer => 
+          farmer.projectId?.toString() === selectedProject.toString()
         );
       }
       
@@ -165,14 +201,14 @@ const FarmersTable = () => {
         total: filtered.length,
       }));
     }
-  }, [allFarmers, selectedState, selectedLga, searchTerm, pagination.currentPage, pagination.perPage, isFiltered]);
+  }, [allFarmers, selectedState, selectedLga, selectedProject, searchTerm, pagination.currentPage, pagination.perPage, isFiltered]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
-    if (selectedState || selectedLga || searchTerm) {
+    if (selectedState || selectedLga || selectedProject || searchTerm) {
       setPagination(prev => ({ ...prev, currentPage: 1 }));
     }
-  }, [selectedState, selectedLga, searchTerm]);
+  }, [selectedState, selectedLga, selectedProject, searchTerm]);
 
   // Update LGAs when state is selected for filtering
   useEffect(() => {
@@ -271,6 +307,7 @@ const FarmersTable = () => {
     setIsModalOpen(false);
     setModalSelectedState("");
     setModalSelectedLga("");
+    setModalSelectedProject("");
     setFirstName("");
     setLastName("");
     setOtherNames("");
@@ -292,6 +329,7 @@ const FarmersTable = () => {
     setSelectedFarmer(farmer);
     setEditModalSelectedState(farmer.msp?.hub || "");
     setEditModalSelectedLga(farmer.subhubs?.hubId || "");
+    setEditModalSelectedProject(farmer.projectId || "");
     setFirstName(farmer.farmerFirstName || "");
     setLastName(farmer.farmerLastName || "");
     setOtherNames(farmer.farmerOtherNames || "");
@@ -345,14 +383,16 @@ const FarmersTable = () => {
         ageBracket,
         hub: editModalSelectedState,
         subHub: editModalSelectedLga,
+        projectId: editModalSelectedProject,
       };
       
       const response = await api.put(`/farmers/${selectedFarmer.farmerId}`, payload);
       
       if (response.status >= 200 && response.status < 300) {
-        // Get state and LGA names from existing data
+        // Get state, LGA, and project names from existing data
         const stateObj = states.find(s => s.id.toString() === editModalSelectedState.toString());
         const lgaObj = lgas.find(l => l.id.toString() === editModalSelectedLga.toString());
+        const projectObj = projects.find(p => p.id.toString() === editModalSelectedProject.toString());
         
         // Create updated Farmer with all required fields
         const updatedFarmer = {
@@ -364,6 +404,7 @@ const FarmersTable = () => {
           alternatePhoneNumber,
           gender,
           ageBracket,
+          projectId: editModalSelectedProject,
           msp: {
             ...selectedFarmer.msp,
             hub: editModalSelectedState,
@@ -371,6 +412,9 @@ const FarmersTable = () => {
           subhubs: {
             ...selectedFarmer.subhubs,
             hubId: editModalSelectedLga,
+          },
+          project_info: {
+            projectName: projectObj?.name || 'N/A'
           }
         };
         
@@ -399,8 +443,8 @@ const FarmersTable = () => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    if (!modalSelectedState || !modalSelectedLga) {
-      setError("Please select both state and LGA");
+    if (!modalSelectedState || !modalSelectedLga || !modalSelectedProject) {
+      setError("Please select state, hub, and project");
       setIsSubmitting(false);
       return;
     }
@@ -416,6 +460,7 @@ const FarmersTable = () => {
         ageBracket,
         hub: modalSelectedState,
         subHub: modalSelectedLga,
+        projectId: modalSelectedProject,
       };
       
       const response = await api.post('/farmers', payload);
@@ -503,7 +548,25 @@ const FarmersTable = () => {
               </select>
             </div>
 
-            <div className="col-12 col-md-6 col-lg-4">
+            <div className="col-12 col-md-6 col-lg-3">
+              <label htmlFor="projectFilter" className="form-label">Filter by Project</label>
+              <select
+                id="projectFilter"
+                className="form-select"
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                disabled={loadingProjects}
+              >
+                <option value="">All Projects</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-12 col-md-6 col-lg-3">
               <label htmlFor="searchFarmer" className="form-label">Search by Name or Phone</label>
               <div className="input-group">
                 <input
@@ -526,9 +589,10 @@ const FarmersTable = () => {
                 onClick={() => {
                   setSelectedState("");
                   setSelectedLga("");
+                  setSelectedProject("");
                   setSearchTerm("");
                 }}
-                disabled={!selectedState && !selectedLga && !searchTerm}
+                disabled={!selectedState && !selectedLga && !selectedProject && !searchTerm}
               >
                 Reset Filters
               </button>
@@ -558,7 +622,7 @@ const FarmersTable = () => {
                       <th scope="col">Gender</th>
                       <th scope="col">Age Bracket</th>
                       <th scope="col">Hub</th>
-                      {/* <th scope="col">Community</th> */}
+                      <th scope="col">Project</th>
                       <th scope="col">Actions</th>
                     </tr>
                   </thead>
@@ -573,7 +637,7 @@ const FarmersTable = () => {
                           <td>{farmer.gender || 'N/A'}</td>
                           <td>{farmer.ageBracket || 'N/A'}</td>
                           <td>{farmer.hubs?.lgas?.lgaName || 'N/A'}</td>
-                          {/* <td>{farmer.hubs?.subhub?.subHubName || 'N/A'}</td> */}
+                          <td>{farmer.projects?.projectName || 'N/A'}</td>
                           <td>
                             <div className="d-flex">
                               <button
@@ -787,7 +851,6 @@ const FarmersTable = () => {
                         <option value="">Select Gender</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
-                        <option value="Other">Other</option>
                       </select>
                     </div>
                     <div className="col-12 col-md-6 mb-3">
@@ -847,6 +910,28 @@ const FarmersTable = () => {
                       ))}
                     </select>
                   </div>
+                  <div className="mb-3">
+                    <label htmlFor="project" className="form-label">Project</label>
+                    {loadingProjects ? (
+                      <div className="text-muted">Loading projects...</div>
+                    ) : (
+                      <select
+                        id="project"
+                        className="form-select"
+                        value={modalSelectedProject}
+                        onChange={(e) => setModalSelectedProject(e.target.value)}
+                        disabled={isSubmitting}
+                        required
+                      >
+                        <option value="">Select Project</option>
+                        {projects.map((project) => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
 
                   {error && (
                     <div className="alert alert-danger">{error}</div>
@@ -864,7 +949,7 @@ const FarmersTable = () => {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={!modalSelectedState || !modalSelectedLga || isSubmitting}
+                      disabled={!modalSelectedState || !modalSelectedLga || !modalSelectedProject || isSubmitting}
                     >
                       {isSubmitting ? (
                         <>
@@ -927,6 +1012,12 @@ const FarmersTable = () => {
                   <label className="form-label">Hub</label>
                   <p className="form-control-static">
                     {selectedFarmer?.hubs?.subhub?.subHubName || 'N/A'}
+                  </p>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Project</label>
+                  <p className="form-control-static">
+                    {selectedFarmer?.project_info?.projectName || 'N/A'}
                   </p>
                 </div>
                 <div className="mb-3">
@@ -1099,6 +1190,24 @@ const FarmersTable = () => {
                       ))}
                     </select>
                   </div>
+                  <div className="mb-3">
+                    <label htmlFor="editProject" className="form-label">Project</label>
+                    <select
+                      id="editProject"
+                      className="form-select"
+                      value={editModalSelectedProject}
+                      onChange={(e) => setEditModalSelectedProject(e.target.value)}
+                      disabled={isSubmitting}
+                      required
+                    >
+                      <option value="">Select Project</option>
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   
                   {error && (
                     <div className="alert alert-danger">{error}</div>
@@ -1116,7 +1225,7 @@ const FarmersTable = () => {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={!editModalSelectedState || !editModalSelectedLga || isSubmitting}
+                      disabled={!editModalSelectedState || !editModalSelectedLga || !editModalSelectedProject || isSubmitting}
                     >
                       {isSubmitting ? (
                         <>

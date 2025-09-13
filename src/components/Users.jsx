@@ -9,10 +9,12 @@ const UsersTable = () => {
   const [displayedUsers, setDisplayedUsers] = useState([]);
   const [states, setStates] = useState([]);
   const [communities, setCommunities] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [selectedRole, setSelectedRole] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingStates, setLoadingStates] = useState(false);
+  const [loadingCommunities, setLoadingCommunities] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [firstName, setFirstName] = useState("");
@@ -37,15 +39,34 @@ const UsersTable = () => {
   });
   const [isFiltered, setIsFiltered] = useState(false);
 
-  // Predefined roles
-  const roles = [
-    { id: "admin", name: "Admin" },
-    { id: "super_admin", name: "Super Admin" },
-    { id: "national_coordinator", name: "National Coordinator" },
-    { id: "state_coordinator", name: "State Coordinator" },
-    { id: "community_lead", name: "Community Lead" },
-    { id: "sub_community_lead", name: "Sub Community Lead" },
-  ];
+  // Fetch roles
+  useEffect(() => {
+    const fetchRoles = async () => {
+      setLoadingStates(true);
+      setError(null);
+      try {
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/roles`);
+        const data = response.data || response;
+        setRoles(
+          Array.isArray(data)
+            ? data
+                .filter(role => !role.deleted_at) // Filter out deleted roles
+                .map((role) => ({
+                  id: role.roleId,
+                  name: role.roleName,
+                }))
+            : []
+        );
+      } catch (error) {
+        console.error("Error fetching roles:", error);
+        setError("Failed to load roles. Please try again.");
+        setRoles([]);
+      } finally {
+        setLoadingStates(false);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   // Fetch states
   useEffect(() => {
@@ -53,9 +74,16 @@ const UsersTable = () => {
       setLoadingStates(true);
       setError(null);
       try {
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/states`);
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/active`);
         const data = response.data || response;
-        setStates(Array.isArray(data) ? data : []);
+        // Filter active states and map to required format
+        const formattedStates = data
+          .filter(state => state.status === "active" && state.state_info)
+          .map(state => ({
+            id: state.state_info.stateId,
+            name: state.state_info.stateName,
+          }));
+        setStates(formattedStates);
       } catch (error) {
         console.error("Error fetching states:", error);
         setError("Failed to load states. Please try again.");
@@ -69,14 +97,28 @@ const UsersTable = () => {
 
   // Fetch communities for add modal
   useEffect(() => {
-    if (modalSelectedState && (role === 'community_lead' || role === 'sub_community_lead')) {
+    if (modalSelectedState && (role === "4" || role === "5" || role === "6")) {
       const fetchCommunities = async () => {
+        setLoadingCommunities(true);
         try {
-          const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/communities?stateId=${modalSelectedState}`);
-          setCommunities(response.data);
-        } catch (err) {
-          console.error(err);
+          const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/state/${modalSelectedState}`);
+          const data = response.data || response;
+          setCommunities(
+            Array.isArray(data)
+              ? data
+                  .filter(community => community.lga_info)
+                  .map(community => ({
+                    id: community.lga_info.lgaId,
+                    name: community.lga_info.lgaName,
+                  }))
+              : []
+          );
+        } catch (error) {
+          console.error("Error fetching communities:", error);
+          setError("Failed to load communities. Please try again.");
           setCommunities([]);
+        } finally {
+          setLoadingCommunities(false);
         }
       };
       fetchCommunities();
@@ -88,14 +130,28 @@ const UsersTable = () => {
 
   // Fetch communities for edit modal
   useEffect(() => {
-    if (editSelectedState && (role === 'community_lead' || role === 'sub_community_lead')) {
+    if (editSelectedState && (role === "4" || role === "5" || role === "6")) {
       const fetchCommunities = async () => {
+        setLoadingCommunities(true);
         try {
-          const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/communities?stateId=${editSelectedState}`);
-          setCommunities(response.data);
-        } catch (err) {
-          console.error(err);
+          const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/state/${editSelectedState}`);
+          const data = response.data || response;
+          setCommunities(
+            Array.isArray(data)
+              ? data
+                  .filter(community => community.lga_info)
+                  .map(community => ({
+                    id: community.lga_info.lgaId,
+                    name: community.lga_info.lgaName,
+                  }))
+              : []
+          );
+        } catch (error) {
+          console.error("Error fetching communities:", error);
+          setError("Failed to load communities. Please try again.");
           setCommunities([]);
+        } finally {
+          setLoadingCommunities(false);
         }
       };
       fetchCommunities();
@@ -154,7 +210,7 @@ const UsersTable = () => {
       let filtered = [...allUsers];
 
       if (selectedRole) {
-        filtered = filtered.filter(user => user.role?.toLowerCase() === selectedRole.toLowerCase());
+        filtered = filtered.filter(user => user.role === selectedRole);
       }
 
       if (searchTerm) {
@@ -244,6 +300,21 @@ const UsersTable = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    let validationError = null;
+    if (!role) {
+      validationError = "Please select a role";
+    } else if (needsState(role) && !editSelectedState) {
+      validationError = "Please select a state";
+    } else if (needsCommunity(role) && !editSelectedCommunity) {
+      validationError = "Please select a community";
+    }
+
+    if (validationError) {
+      setError(validationError);
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const payload = {
         firstName,
@@ -252,10 +323,10 @@ const UsersTable = () => {
         phoneNumber,
         role,
       };
-      if (role === 'state_coordinator' || role === 'community_lead' || role === 'sub_community_lead') {
+      if (needsState(role)) {
         payload.stateId = editSelectedState;
       }
-      if (role === 'community_lead' || role === 'sub_community_lead') {
+      if (needsCommunity(role)) {
         payload.communityId = editSelectedCommunity;
       }
 
@@ -271,6 +342,9 @@ const UsersTable = () => {
           role,
           stateId: payload.stateId,
           communityId: payload.communityId,
+          stateName: states.find(s => s.id === payload.stateId)?.name || 'N/A',
+          communityName: communities.find(c => c.id === payload.communityId)?.name || 'N/A',
+          user_role: { roleName: roles.find(r => r.id === parseInt(role))?.name || 'N/A' },
         };
 
         setAllUsers(prev =>
@@ -300,9 +374,9 @@ const UsersTable = () => {
     let validationError = null;
     if (!role) {
       validationError = "Please select a role";
-    } else if ((role === 'state_coordinator' || role === 'community_lead' || role === 'sub_community_lead') && !modalSelectedState) {
+    } else if (needsState(role) && !modalSelectedState) {
       validationError = "Please select a state";
-    } else if ((role === 'community_lead' || role === 'sub_community_lead') && !modalSelectedCommunity) {
+    } else if (needsCommunity(role) && !modalSelectedCommunity) {
       validationError = "Please select a community";
     }
 
@@ -318,13 +392,15 @@ const UsersTable = () => {
         lastName,
         email,
         phoneNumber,
-        role,
+        // role,
+        role: parseInt(role),
       };
       if (modalSelectedState) {
-        payload.stateId = modalSelectedState;
+        // payload.stateId = modalSelectedState;
+        payload.stateId = parseInt(modalSelectedState);
       }
       if (modalSelectedCommunity) {
-        payload.communityId = modalSelectedCommunity;
+        payload.communityId = parseInt(modalSelectedCommunity);
       }
 
       const response = await api.post('/users', payload);
@@ -358,8 +434,8 @@ const UsersTable = () => {
     setPagination(prev => ({ ...prev, perPage, currentPage: 1 }));
   };
 
-  const needsState = (selectedRole) => ['state_coordinator', 'community_lead', 'sub_community_lead'].includes(selectedRole);
-  const needsCommunity = (selectedRole) => ['community_lead', 'sub_community_lead'].includes(selectedRole);
+  const needsState = (selectedRole) => ['4', '5', '6'].includes(selectedRole);
+  const needsCommunity = (selectedRole) => ['5', '6'].includes(selectedRole);
 
   return (
     <div className="col-lg-12">
@@ -369,9 +445,9 @@ const UsersTable = () => {
           <button
             className="btn btn-primary"
             onClick={() => setIsModalOpen(true)}
-            disabled={loadingUsers}
+            disabled={loadingUsers || loadingStates}
           >
-            {loadingUsers ? 'Loading...' : 'Add User'}
+            {loadingUsers || loadingStates ? 'Loading...' : 'Add User'}
           </button>
         </div>
 
@@ -384,6 +460,7 @@ const UsersTable = () => {
                 className="form-select"
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
+                disabled={loadingStates}
               >
                 <option value="">All Roles</option>
                 {roles.map((role) => (
@@ -442,13 +519,13 @@ const UsersTable = () => {
                   <thead>
                     <tr>
                       <th scope="col">SN</th>
-                      <th scope="col">User ID</th>
+                      {/* <th scope="col">User ID</th> */}
                       <th scope="col">Name</th>
                       <th scope="col">Email</th>
                       <th scope="col">Phone</th>
                       <th scope="col">Role</th>
                       <th scope="col">State</th>
-                      <th scope="col">Community</th>
+                      <th scope="col">Hub</th>
                       <th scope="col">Status</th>
                       <th scope="col">Actions</th>
                     </tr>
@@ -458,13 +535,13 @@ const UsersTable = () => {
                       displayedUsers.map((user, index) => (
                         <tr key={user.userId || index}>
                           <td>{(pagination.currentPage - 1) * pagination.perPage + index + 1}</td>
-                          <td>{user.userId || 'N/A'}</td>
+                          {/* <td>{user.userId || 'N/A'}</td> */}
                           <td>{`${user.firstName || ''} ${user.lastName || ''}`}</td>
                           <td>{user.email || 'N/A'}</td>
                           <td>{user.phoneNumber || 'N/A'}</td>
-                          <td>{user.role || 'N/A'}</td>
-                          <td>{user.stateName || 'N/A'}</td>
-                          <td>{user.communityName || 'N/A'}</td>
+                          <td>{user.user_role?.roleName || 'N/A'}</td>
+                          <td>{user?.state_info?.stateName || 'N/A'}</td>
+                          <td>{user?.lga_info?.lgaName || 'N/A'}</td>
                           <td>{user.status || 'N/A'}</td>
                           <td>
                             <div className="d-flex">
@@ -663,7 +740,7 @@ const UsersTable = () => {
                         setModalSelectedState("");
                         setModalSelectedCommunity("");
                       }}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || loadingStates}
                       required
                     >
                       <option value="">Select Role</option>
@@ -703,21 +780,25 @@ const UsersTable = () => {
                   {needsCommunity(role) && (
                     <div className="mb-3">
                       <label htmlFor="community" className="form-label">Community</label>
-                      <select
-                        id="community"
-                        className="form-select"
-                        value={modalSelectedCommunity}
-                        onChange={(e) => setModalSelectedCommunity(e.target.value)}
-                        disabled={!modalSelectedState || communities.length === 0 || isSubmitting}
-                        required
-                      >
-                        <option value="">Select Community</option>
-                        {communities.map((community) => (
-                          <option key={community.id} value={community.id}>
-                            {community.name}
-                          </option>
-                        ))}
-                      </select>
+                      {loadingCommunities ? (
+                        <div className="text-muted">Loading communities...</div>
+                      ) : (
+                        <select
+                          id="community"
+                          className="form-select"
+                          value={modalSelectedCommunity}
+                          onChange={(e) => setModalSelectedCommunity(e.target.value)}
+                          disabled={!modalSelectedState || communities.length === 0 || isSubmitting}
+                          required
+                        >
+                          <option value="">Select Community</option>
+                          {communities.map((community) => (
+                            <option key={community.id} value={community.id}>
+                              {community.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   )}
 
@@ -784,7 +865,7 @@ const UsersTable = () => {
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Role</label>
-                  <p className="form-control-static">{selectedUser?.role || 'N/A'}</p>
+                  <p className="form-control-static">{selectedUser?.user_role?.roleName || 'N/A'}</p>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">State</label>
@@ -892,7 +973,7 @@ const UsersTable = () => {
                         setEditSelectedState("");
                         setEditSelectedCommunity("");
                       }}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || loadingStates}
                       required
                     >
                       <option value="">Select Role</option>
@@ -932,21 +1013,25 @@ const UsersTable = () => {
                   {needsCommunity(role) && (
                     <div className="mb-3">
                       <label htmlFor="editCommunity" className="form-label">Community</label>
-                      <select
-                        id="editCommunity"
-                        className="form-select"
-                        value={editSelectedCommunity}
-                        onChange={(e) => setEditSelectedCommunity(e.target.value)}
-                        disabled={!editSelectedState || communities.length === 0 || isSubmitting}
-                        required
-                      >
-                        <option value="">Select Community</option>
-                        {communities.map((community) => (
-                          <option key={community.id} value={community.id}>
-                            {community.name}
-                          </option>
-                        ))}
-                      </select>
+                      {loadingCommunities ? (
+                        <div className="text-muted">Loading communities...</div>
+                      ) : (
+                        <select
+                          id="editCommunity"
+                          className="form-select"
+                          value={editSelectedCommunity}
+                          onChange={(e) => setEditSelectedCommunity(e.target.value)}
+                          disabled={!editSelectedState || communities.length === 0 || isSubmitting}
+                          required
+                        >
+                          <option value="">Select Community</option>
+                          {communities.map((community) => (
+                            <option key={community.id} value={community.id}>
+                              {community.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   )}
 

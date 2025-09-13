@@ -17,7 +17,9 @@ const MasterLayout = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(null); // null indicates loading
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
+  const [loggedInState, setLoggedInState] = useState('');
 
+  const staffRole = getRole();
   const refreshToken = useCallback(async () => {
     try {
       await api.post('/refresh', {}, { withCredentials: true });
@@ -35,6 +37,7 @@ const MasterLayout = ({ children }) => {
         setIsAuthenticated(true);
         setRole(response.data.role || '');
         setName(`${response.data.firstName || ''} ${response.data.lastName || ''}`.trim());
+        setLoggedInState(response.data.state || '');
       } catch (error) {
         console.error('Auth check failed:', error);
         setIsAuthenticated(false);
@@ -171,7 +174,7 @@ const MasterLayout = ({ children }) => {
     
     if (currentRole === 'ADMIN' || currentRole === 'SUPER ADMIN') {
       roleSpecificItems = [
-        <li key="hubs">
+        <li key="users">
           <Link href="/dashboard/users">
             <Icon
               icon="ph:users-four"
@@ -180,6 +183,16 @@ const MasterLayout = ({ children }) => {
             <span>Users</span>
           </Link>
         </li>,
+        <li key="projects">
+          <Link href="/dashboard/projects">
+            <Icon
+              icon="ph:fediverse-logo-duotone"
+              className="menu-icon"
+            />
+            <span>Projects</span>
+          </Link>
+        </li>,
+,
         <li key="hubs">
           <Link href="/dashboard/active-locations">
             <Icon
@@ -189,6 +202,7 @@ const MasterLayout = ({ children }) => {
             <span>Hubs</span>
           </Link>
         </li>,
+        
         <li key="msps">
           <Link href="/dashboard/msps">
             <Icon

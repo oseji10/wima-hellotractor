@@ -9,11 +9,14 @@ const MSPSTable = () => {
   const [displayedMsps, setDisplayedMsps] = useState([]);
   const [states, setStates] = useState([]);
   const [lgas, setLgas] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [selectedState, setSelectedState] = useState("");
   const [selectedLga, setSelectedLga] = useState("");
+  const [selectedProject, setSelectedProject] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingMsps, setLoadingMsps] = useState(false);
+  const [loadingProjects, setLoadingProjects] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [firstName, setFirstName] = useState("");
@@ -32,6 +35,9 @@ const MSPSTable = () => {
     total: 0,
   });
   const [isFiltered, setIsFiltered] = useState(false);
+  const [editModalSelectedState, setEditModalSelectedState] = useState("");
+  const [editModalSelectedLga, setEditModalSelectedLga] = useState("");
+  const [editModalSelectedProject, setEditModalSelectedProject] = useState("");
 
   // Fetch MSPs with filtering and pagination
   useEffect(() => {
@@ -46,13 +52,14 @@ const MSPSTable = () => {
         // Add filter params if any filter is active
         if (selectedState) params.state = selectedState;
         if (selectedLga) params.lga = selectedLga;
+        if (selectedProject) params.projectId = selectedProject;
         if (searchTerm) params.search = searchTerm;
 
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/msps`, { params });
         const data = response.data;
         const mspsData = Array.isArray(data.data) ? data.data : [];
 
-        if (selectedState || selectedLga || searchTerm) {
+        if (selectedState || selectedLga || selectedProject || searchTerm) {
           // Using backend filtering
           setDisplayedMsps(mspsData);
           setIsFiltered(true);
@@ -78,11 +85,11 @@ const MSPSTable = () => {
       }
     };
     fetchMsps();
-  }, [pagination.currentPage, pagination.perPage, selectedState, selectedLga, searchTerm]);
+  }, [pagination.currentPage, pagination.perPage, selectedState, selectedLga, selectedProject, searchTerm]);
 
   // Apply frontend filtering when we have all data and filters are active
   useEffect(() => {
-    if (!isFiltered && (selectedState || selectedLga || searchTerm)) {
+    if (!isFiltered && (selectedState || selectedLga || selectedProject || searchTerm)) {
       let filtered = [...allMsps];
       
       if (selectedState) {
@@ -94,6 +101,12 @@ const MSPSTable = () => {
       if (selectedLga) {
         filtered = filtered.filter(msp => 
           msp.hub?.lga?.toString() === selectedLga.toString()
+        );
+      }
+      
+      if (selectedProject) {
+        filtered = filtered.filter(msp => 
+          msp.projectId?.toString() === selectedProject.toString()
         );
       }
       
@@ -118,14 +131,14 @@ const MSPSTable = () => {
         total: filtered.length,
       }));
     }
-  }, [allMsps, selectedState, selectedLga, searchTerm, pagination.currentPage, pagination.perPage, isFiltered]);
+  }, [allMsps, selectedState, selectedLga, selectedProject, searchTerm, pagination.currentPage, pagination.perPage, isFiltered]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
-    if (selectedState || selectedLga || searchTerm) {
+    if (selectedState || selectedLga || selectedProject || searchTerm) {
       setPagination(prev => ({ ...prev, currentPage: 1 }));
     }
-  }, [selectedState, selectedLga, searchTerm]);
+  }, [selectedState, selectedLga, selectedProject, searchTerm]);
 
   // Fetch states
   useEffect(() => {
@@ -154,18 +167,43 @@ const MSPSTable = () => {
     fetchStates();
   }, []);
 
+  // Fetch projects
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoadingProjects(true);
+      setError(null);
+      try {
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
+        const data = response.data || response;
+        const projectsData = Array.isArray(data.data) ? data.data.map(project => ({
+          id: project.projectId,
+          name: project.projectName
+        })) : [];
+        setProjects(projectsData);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+        setError("Failed to load projects. Please try again.");
+        setProjects([]);
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+    fetchProjects();
+  }, []);
+
   // Fetch LGAs when state is selected
   useEffect(() => {
     const fetchLgas = async () => {
-      if (!selectedState) {
+      if (!selectedState && !editModalSelectedState) {
         setLgas([]);
         setSelectedLga("");
+        setEditModalSelectedLga("");
         return;
       }
       
       try {
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/lgas`, {
-          params: { state: selectedState }
+          params: { state: selectedState || editModalSelectedState }
         });
         
         const responseData = response.data || response;
@@ -183,15 +221,17 @@ const MSPSTable = () => {
         console.error("Error fetching LGAs:", error);
         setLgas([]);
         setSelectedLga("");
+        setEditModalSelectedLga("");
       }
     };
     fetchLgas();
-  }, [selectedState]);
+  }, [selectedState, editModalSelectedState]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedState("");
     setSelectedLga("");
+    setSelectedProject("");
     setFirstName("");
     setLastName("");
     setPhoneNumber("");
@@ -208,8 +248,9 @@ const MSPSTable = () => {
   // Edit Modal Handler
   const handleEdit = (msp) => {
     setSelectedMsp(msp);
-    setSelectedState(msp.hub?.state || "");
-    setSelectedLga(msp.hub?.lga || "");
+    setEditModalSelectedState(msp.hub?.state || "");
+    setEditModalSelectedLga(msp.hub?.lga || "");
+    setEditModalSelectedProject(msp.projectId || "");
     setFirstName(msp.users?.firstName || "");
     setLastName(msp.users?.lastName || "");
     setPhoneNumber(msp.users?.phoneNumber || "");
@@ -255,24 +296,30 @@ const MSPSTable = () => {
         lastName,
         phoneNumber,
         email,
-        state: selectedState,
-        lga: selectedLga,
+        state: editModalSelectedState,
+        lga: editModalSelectedLga,
+        projectId: editModalSelectedProject,
       };
       
       const response = await api.put(`/msps/${selectedMsp.id}`, payload);
       
       if (response.status >= 200 && response.status < 300) {
-        // Get state and LGA names from existing data
-        const stateObj = states.find(s => s.id.toString() === selectedState.toString());
-        const lgaObj = lgas.find(l => l.id.toString() === selectedLga.toString());
+        // Get state, LGA, and project names from existing data
+        const stateObj = states.find(s => s.id.toString() === editModalSelectedState.toString());
+        const lgaObj = lgas.find(l => l.id.toString() === editModalSelectedLga.toString());
+        const projectObj = projects.find(p => p.id.toString() === editModalSelectedProject.toString());
         
         // Create updated MSP with all required fields
         const updatedMsp = {
           ...response.data,
           hub: {
             ...selectedMsp.hub,
-            state: selectedState,
-            lga: selectedLga,
+            state: editModalSelectedState,
+            lga: editModalSelectedLga,
+          },
+          projectId: editModalSelectedProject,
+          project_info: {
+            projectName: projectObj?.name || 'N/A'
           },
           users: {
             ...selectedMsp.users,
@@ -308,8 +355,8 @@ const MSPSTable = () => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    if (!selectedState || !selectedLga) {
-      setError("Please select both state and LGA");
+    if (!selectedState || !selectedLga || !selectedProject) {
+      setError("Please select state, LGA, and project");
       setIsSubmitting(false);
       return;
     }
@@ -322,6 +369,7 @@ const MSPSTable = () => {
         email,
         state: selectedState,
         lga: selectedLga,
+        projectId: selectedProject,
       };
       
       const response = await api.post('/msps', payload);
@@ -356,7 +404,7 @@ const MSPSTable = () => {
     setPagination(prev => ({ ...prev, perPage, currentPage: 1 }));
   };
 
-   return (
+  return (
     <div className="col-lg-12">
       <div className="card">
         <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
@@ -409,7 +457,25 @@ const MSPSTable = () => {
               </select>
             </div>
             
-            <div className="col-12 col-md-6 col-lg-4">
+            <div className="col-12 col-md-6 col-lg-3">
+              <label htmlFor="projectFilter" className="form-label">Filter by Project</label>
+              <select
+                id="projectFilter"
+                className="form-select"
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                disabled={loadingProjects}
+              >
+                <option value="">All Projects</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="col-12 col-md-6 col-lg-3">
               <label htmlFor="searchMsp" className="form-label">Search by Name or Phone</label>
               <div className="input-group">
                 <input
@@ -432,9 +498,10 @@ const MSPSTable = () => {
                 onClick={() => {
                   setSelectedState("");
                   setSelectedLga("");
+                  setSelectedProject("");
                   setSearchTerm("");
                 }}
-                disabled={!selectedState && !selectedLga && !searchTerm}
+                disabled={!selectedState && !selectedLga && !selectedProject && !searchTerm}
               >
                 Reset Filters
               </button>
@@ -463,6 +530,7 @@ const MSPSTable = () => {
                       <th scope="col">Phone</th>
                       <th scope="col">State</th>
                       <th scope="col">Hub</th>
+                      <th scope="col">Project</th>
                       <th scope="col">Actions</th>
                     </tr>
                   </thead>
@@ -471,10 +539,7 @@ const MSPSTable = () => {
                       displayedMsps.map((msp, index) => (
                         <tr key={msp.id || index}>
                           <td>{(pagination.currentPage - 1) * pagination.perPage + index + 1}</td>
-                          <td>
-                            {/* {(pagination.currentPage - 1) * pagination.perPage + index + 1} */}
-                            {msp.mspId || 'N/A'}
-                          </td>
+                          <td>{msp.mspId || 'N/A'}</td>
                           <td>{`${msp.users?.firstName || ''} ${msp.users?.lastName || ''}`}</td>
                           <td>{msp.users?.phoneNumber || 'N/A'}</td>
                           <td>
@@ -482,6 +547,9 @@ const MSPSTable = () => {
                           </td>
                           <td>
                             {msp.hub?.lgas?.lgaName || 'N/A'}
+                          </td>
+                          <td>
+                            {msp.projects?.projectName || 'N/A'}
                           </td>
                           <td>
                             <div className="d-flex">
@@ -512,7 +580,7 @@ const MSPSTable = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="6" className="text-center py-4">
+                        <td colSpan="8" className="text-center py-4">
                           No MSPs found matching your criteria
                         </td>
                       </tr>
@@ -712,6 +780,28 @@ const MSPSTable = () => {
                       ))}
                     </select>
                   </div>
+                  <div className="mb-3">
+                    <label htmlFor="project" className="form-label">Project</label>
+                    {loadingProjects ? (
+                      <div className="text-muted">Loading projects...</div>
+                    ) : (
+                      <select
+                        id="project"
+                        className="form-select"
+                        value={selectedProject}
+                        onChange={(e) => setSelectedProject(e.target.value)}
+                        disabled={isSubmitting}
+                        required
+                      >
+                        <option value="">Select Project</option>
+                        {projects.map((project) => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
 
                   {error && (
                     <div className="alert alert-danger">{error}</div>
@@ -729,7 +819,7 @@ const MSPSTable = () => {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={!selectedState || !selectedLga || isSubmitting}
+                      disabled={!selectedState || !selectedLga || !selectedProject || isSubmitting}
                     >
                       {isSubmitting ? (
                         <>
@@ -784,6 +874,12 @@ const MSPSTable = () => {
                   <label className="form-label">LGA</label>
                   <p className="form-control-static">
                     {lgas.find(l => l.id === selectedMsp?.hub?.lga)?.name || 'N/A'}
+                  </p>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Project</label>
+                  <p className="form-control-static">
+                    {selectedMsp?.project_info?.projectName || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -875,8 +971,8 @@ const MSPSTable = () => {
                     <select
                       id="editState"
                       className="form-select"
-                      value={selectedState}
-                      onChange={(e) => setSelectedState(e.target.value)}
+                      value={editModalSelectedState}
+                      onChange={(e) => setEditModalSelectedState(e.target.value)}
                       disabled={isSubmitting}
                       required
                     >
@@ -893,15 +989,33 @@ const MSPSTable = () => {
                     <select
                       id="editLga"
                       className="form-select"
-                      value={selectedLga}
-                      onChange={(e) => setSelectedLga(e.target.value)}
-                      disabled={!selectedState || lgas.length === 0 || isSubmitting}
+                      value={editModalSelectedLga}
+                      onChange={(e) => setEditModalSelectedLga(e.target.value)}
+                      disabled={!editModalSelectedState || lgas.length === 0 || isSubmitting}
                       required
                     >
                       <option value="">Select LGA</option>
                       {lgas.map((lga) => (
                         <option key={lga.id} value={lga.id}>
                           {lga.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label htmlFor="editProject" className="form-label">Project</label>
+                    <select
+                      id="editProject"
+                      className="form-select"
+                      value={editModalSelectedProject}
+                      onChange={(e) => setEditModalSelectedProject(e.target.value)}
+                      disabled={isSubmitting}
+                      required
+                    >
+                      <option value="">Select Project</option>
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
                         </option>
                       ))}
                     </select>
@@ -923,7 +1037,7 @@ const MSPSTable = () => {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={isSubmitting}
+                      disabled={!editModalSelectedState || !editModalSelectedLga || !editModalSelectedProject || isSubmitting}
                     >
                       {isSubmitting ? (
                         <>

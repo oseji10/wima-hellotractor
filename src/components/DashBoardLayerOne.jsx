@@ -1,3 +1,6 @@
+import AlertLayer from "./AlertLayer";
+import BadgesLayer from "./BadgesLayer";
+import CardLayer from "./CardLayer";
 import GeneratedContent from "./child/GeneratedContent";
 import LatestRegisteredOne from "./child/LatestRegisteredOne";
 import SalesStatisticOne from "./child/SalesStatisticOne";
@@ -6,10 +9,12 @@ import TopPerformerOne from "./child/TopPerformerOne";
 import TotalSubscriberOne from "./child/TotalSubscriberOne";
 import UnitCountOne from "./child/UnitCountOne";
 import UsersOverviewOne from "./child/UsersOverviewOne";
+import WalletLayer from "./WalletLayer";
 
 const DashBoardLayerOne = () => {
   return (
     <>
+    <CardLayer />
       {/* UnitCountOne */}
       <UnitCountOne />
 

@@ -7,6 +7,8 @@ export interface UserData {
   role: string;
   applicationType: string | null;
   access_token: string;
+  state: string | null;
+  community: string | null;
   
 }
 
@@ -45,3 +47,12 @@ export const getUserEmail = (): string | null => {
   return user?.email || null;
 }
 
+export const getLoggedInState = (): string | null => {
+  const user = getUserData();
+  return user?.state || null;
+}
+
+export const getCommunity = (): string | null => {
+  const user = getUserData();
+  return user?.community || null;
+}

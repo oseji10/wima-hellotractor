@@ -35,6 +35,8 @@ const SignInLayer = () => {
         phoneNumber,
         role,
         access_token,
+        state,
+        community
       } = response.data;
 
       const userData = {
@@ -44,6 +46,8 @@ const SignInLayer = () => {
         phoneNumber,
         role,
         access_token,
+        state,
+        community
       };
 
       localStorage.setItem('user', JSON.stringify(userData));

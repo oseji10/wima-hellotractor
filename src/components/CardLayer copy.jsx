@@ -11,20 +11,20 @@ const CardLayer = () => {
       {/* DefaultCard */}
       <DefaultCard />
 
-      
-      {/* <CardTextIcon />
+      {/* CardTextIcon */}
+      <CardTextIcon />
 
-      
+      {/* CardWithImageOverlays */}
       <CardWithImageOverlays />
 
-      
+      {/* CardHeaderFooter */}
       <CardHeaderFooter />
 
-      
+      {/* HorizontalCard */}
       <HorizontalCard />
 
-      
-      <CardWithBackgroundColor /> */}
+      {/* CardWithBackgroundColor */}
+      <CardWithBackgroundColor />
     </>
   );
 };
