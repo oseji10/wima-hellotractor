@@ -386,6 +386,15 @@ const MasterLayout = ({ children }) => {
             <span>Farmers</span>
           </Link>
         </li>,
+        <li key="memberships">
+          <Link href="/dashboard/memberships">
+            <Icon
+              icon="cil:badge"
+              className="menu-icon"
+            />
+            <span>Memberships</span>
+          </Link>
+        </li>,
         <li key="analytics">
           <Link href="/dashboard/analytics">
             <Icon icon="solar:pie-chart-outline" className="menu-icon" />

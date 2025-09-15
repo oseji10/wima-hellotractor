@@ -14,6 +14,7 @@ const Transactions = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProject, setSelectedProject] = useState(""); // New state for project filter
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -28,6 +29,8 @@ const Transactions = () => {
   const [selectedServices, setSelectedServices] = useState([]);
   const [commodities, setCommodities] = useState([]);
   const [selectedCommodities, setSelectedCommodities] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -38,7 +41,8 @@ const Transactions = () => {
     transactionStatus: "Paid",
     paymentMethod: "Cash",
     hub: "",
-    transaction_commodity: []
+    transaction_commodity: [],
+    projectId: "" // Added projectId to formData
   });
 
   // Status colors mapping
@@ -56,19 +60,18 @@ const Transactions = () => {
         const params = {
           page: pagination.currentPage,
           per_page: pagination.perPage,
-          ...(searchTerm && { search: searchTerm })
+          ...(searchTerm && { search: searchTerm }),
+          ...(selectedProject && { projectId: selectedProject }) // Add project filter
         };
 
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/transactions`, { params });
         
-        // Check if response.data is an array (direct response) or has data property
         const transactionsData = Array.isArray(response.data) 
           ? response.data 
           : (Array.isArray(response.data?.data) ? response.data.data : []);
         
         setTransactions(transactionsData);
         
-        // Update pagination based on response structure
         setPagination(prev => ({
           ...prev,
           totalPages: response.data?.last_page || 1,
@@ -84,17 +87,39 @@ const Transactions = () => {
     };
     
     fetchTransactions();
-  }, [pagination.currentPage, pagination.perPage, searchTerm]);
+  }, [pagination.currentPage, pagination.perPage, searchTerm, selectedProject]); // Added selectedProject to dependencies
+
+  // Fetch projects data
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoadingProjects(true);
+      setError(null);
+      try {
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
+        const data = response.data || response;
+        const projectsData = Array.isArray(data.data) ? data.data.map(project => ({
+          id: project.projectId,
+          name: project.projectName
+        })) : [];
+        setProjects(projectsData);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+        setError("Failed to load projects. Please try again.");
+        setProjects([]);
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+    fetchProjects();
+  }, []);
 
   // Fetch services and commodities
   useEffect(() => {
     const fetchServicesAndCommodities = async () => {
       try {
-        // Fetch services (replace with your actual endpoint)
         const servicesResponse = await api.get('/services');
         setServices(servicesResponse.data.data || []);
         
-        // Fetch commodities (replace with your actual endpoint)
         const commoditiesResponse = await api.get('/commodities');
         setCommodities(commoditiesResponse.data.data || []);
       } catch (error) {
@@ -116,19 +141,19 @@ const Transactions = () => {
   };
 
   const handleSearchFarmers = async () => {
-  setIsSearching(true); // Move this to the start of the function
-  try {
-    const response = await api.get('/farmers/search', {
-      params: { search: farmerSearchTerm }
-    });
-    setSearchResults(response.data || []);
-  } catch (error) {
-    console.error("Error searching farmers:", error);
-    setSearchResults([]);
-  } finally {
-    setIsSearching(false); // This will run whether successful or not
-  }
-};
+    setIsSearching(true);
+    try {
+      const response = await api.get('/farmers/search', {
+        params: { search: farmerSearchTerm }
+      });
+      setSearchResults(response.data || []);
+    } catch (error) {
+      console.error("Error searching farmers:", error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleSelectFarmer = (farmer) => {
     setSelectedFarmer(farmer);
@@ -140,29 +165,27 @@ const Transactions = () => {
     setIsFarmerSearchOpen(false);
   };
 
-const handleAddService = (service) => {
-  if (!selectedServices.some(s => s.serviceId === service.serviceId)) {
-    const newService = {
-      ...service,
-      quantity: 1,
-      totalCost: parseFloat(service.price || service.costPerUnit) // Use price or costPerUnit
-    };
-    
-    setSelectedServices(prev => [...prev, newService]);
-    
-    // Update total cost
-    setFormData(prev => ({
-      ...prev,
-      totalCost: (parseFloat(prev.totalCost || 0) + parseFloat(newService.totalCost)).toFixed(2)
-    }));
-  }
-};
+  const handleAddService = (service) => {
+    if (!selectedServices.some(s => s.serviceId === service.serviceId)) {
+      const newService = {
+        ...service,
+        quantity: 1,
+        totalCost: parseFloat(service.price || service.cost)
+      };
+      
+      setSelectedServices(prev => [...prev, newService]);
+      
+      setFormData(prev => ({
+        ...prev,
+        totalCost: (parseFloat(prev.totalCost || 0) + parseFloat(newService.totalCost)).toFixed(2)
+      }));
+    }
+  };
 
   const handleRemoveService = (serviceId) => {
     const serviceToRemove = selectedServices.find(s => s.serviceId === serviceId);
     if (serviceToRemove) {
       setSelectedServices(prev => prev.filter(s => s.serviceId !== serviceId));
-      // Update total cost
       setFormData(prev => ({
         ...prev,
         totalCost: (parseFloat(prev.totalCost || 0) - parseFloat(serviceToRemove.price)).toString()
@@ -196,7 +219,6 @@ const handleAddService = (service) => {
       const response = await api.post('/transactions', formData);
       
       if (response.status >= 200 && response.status < 300) {
-        // Refresh the transactions after successful addition
         const transactionsResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/transactions`);
         const newTransactions = Array.isArray(transactionsResponse.data) 
           ? transactionsResponse.data 
@@ -212,7 +234,8 @@ const handleAddService = (service) => {
           transactionStatus: "Paid",
           paymentMethod: "Cash",
           hub: "",
-          transaction_commodity: []
+          transaction_commodity: [],
+          projectId: "" // Reset projectId
         });
         setSelectedFarmer(null);
         setSelectedServices([]);
@@ -274,13 +297,34 @@ const handleAddService = (service) => {
               </div>
             </div>
             
+            <div className="col-12 col-md-6 col-lg-4">
+              <label htmlFor="projectFilter" className="form-label">Filter by Project</label>
+              <select
+                id="projectFilter"
+                className="form-select"
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                disabled={loadingProjects}
+              >
+                <option value="">All Projects</option>
+                {projects.map(project => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
             <div className="col-12 col-md-6 col-lg-2 d-flex align-items-end">
               <button 
                 className="btn btn-secondary w-100"
-                onClick={() => setSearchTerm("")}
-                disabled={!searchTerm}
+                onClick={() => {
+                  setSearchTerm("");
+                  setSelectedProject(""); // Reset project filter
+                }}
+                disabled={!searchTerm && !selectedProject}
               >
-                Reset Search
+                Reset Filters
               </button>
             </div>
           </div>
@@ -309,6 +353,7 @@ const handleAddService = (service) => {
                       <th scope="col">Type</th>
                       <th scope="col">Amount</th>
                       <th scope="col">Status</th>
+                      <th scope="col">Project</th> {/* New Project Column */}
                       <th scope="col">Date</th>
                       <th scope="col">Actions</th>
                     </tr>
@@ -317,7 +362,6 @@ const handleAddService = (service) => {
                     {transactions.length > 0 ? (
                       transactions.map((transaction, index) => (
                         <tr key={transaction.transactionId || index}>
-                          {/* <td>{transaction.transactionId}</td> */}
                           <td>{(pagination.currentPage - 1) * pagination.perPage + index + 1}</td>
                           <td>{transaction.transactionReference}</td>
                           <td>{transaction.msp}</td>
@@ -330,19 +374,19 @@ const handleAddService = (service) => {
                           <td>{transaction.transactionType}</td>
                           <td>{transaction.totalCost}</td>
                           <td>
-                         <span
-  className={`px-3 py-1 rounded-full text-sm font-medium ${
-    transaction.transactionStatus === "Paid"
-      ? "bg-green text-green"
-      : transaction.transactionStatus === "pending"
-      ? "bg-yellow-100 text-yellow-700"
-      : "bg-gray-100 text-gray-700"
-  }`}
->
-  {transaction.transactionStatus}
-</span>
-
+                            <span
+                              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                transaction.transactionStatus === "Paid"
+                                  ? "bg-green text-green"
+                                  : transaction.transactionStatus === "pending"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                              {transaction.transactionStatus}
+                            </span>
                           </td>
+                          <td>{transaction.projects?.projectName || 'N/A'}</td> {/* Display Project Name */}
                           <td>{formatDate(transaction.created_at)}</td>
                           <td>
                             <div className="d-flex">
@@ -359,7 +403,7 @@ const handleAddService = (service) => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="10" className="text-center py-4">
+                        <td colSpan="11" className="text-center py-4"> {/* Updated colSpan for new column */}
                           No transactions found
                         </td>
                       </tr>
@@ -368,8 +412,6 @@ const handleAddService = (service) => {
                 </table>
               </div>
               
-              {/* Pagination */}
-              {/* Pagination - THIS IS THE RESTORED COMPONENT */}
               {pagination.totalPages > 1 && (
                 <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-3">
                   <div className="d-flex align-items-center">
@@ -464,306 +506,316 @@ const handleAddService = (service) => {
       </div>
 
       {/* Add Transaction Modal */}
-{isModalOpen && (
-  <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-    <div className="modal-dialog modal-dialog-centered modal-lg">
-      <div className="modal-content">
-        <div className="modal-header bg-primary text-white">
-          <h5 className="modal-title text-white">Create Transaction</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setIsModalOpen(false)}
-            disabled={isSubmitting}
-          ></button>
-        </div>
-        <div className="modal-body">
-          <form onSubmit={handleSubmit}>
-            <div className="row g-3 mb-4">
-              {/* Farmer Selection */}
-              <div className="col-md-6">
-                <label className="form-label">Farmer</label>
-                <div className="input-group">
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={selectedFarmer ? 
-                      `${selectedFarmer.farmerFirstName} ${selectedFarmer.farmerLastName} (${selectedFarmer.farmerId})` : 
-                      ""}
-                    readOnly
-                  />
-                  <button 
-                    className="btn btn-outline-primary" 
-                    type="button"
-                    onClick={() => setIsFarmerSearchOpen(true)}
-                  >
-                    Search
-                  </button>
-                </div>
+      {isModalOpen && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content">
+              <div className="modal-header bg-primary text-white">
+                <h5 className="modal-title text-white">Create Transaction</h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setIsModalOpen(false)}
+                  disabled={isSubmitting}
+                ></button>
               </div>
-              
-              {/* MSP Name */}
-<div className="col-md-6">
-  <label className="form-label">MSP Name</label>
-  <input
-    type="text"
-    className="form-control"
-    value={selectedFarmer?.msp_info?.firstName ? 
-      `${selectedFarmer.msp_info.firstName} ${selectedFarmer.msp_info.lastName}` : 
-      selectedFarmer?.msp_info?.users?.firstName ?
-      `${selectedFarmer.msp_info.users.firstName} ${selectedFarmer.msp_info.users.lastName}` :
-      ""}
-    readOnly
-  />
-</div>
-              
-              {/* Transaction Type */}
-              <div className="col-md-4">
-                <label className="form-label">Transaction Type</label>
-                <select
-                  className="form-select"
-                  value={formData.transactionType}
-                  onChange={(e) => setFormData({...formData, transactionType: e.target.value})}
-                  required
-                >
-                  <option value="SERVICE">Service</option>
-                  <option value="PRODUCT">Product</option>
-                </select>
-              </div>
-              
-              {/* Status */}
-              <div className="col-md-4">
-                <label className="form-label">Status</label>
-                <select
-                  className="form-select"
-                  value={formData.transactionStatus}
-                  onChange={(e) => setFormData({...formData, transactionStatus: e.target.value})}
-                  required
-                >
-                  <option value="Paid">Paid</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Failed">Failed</option>
-                </select>
-              </div>
-              
-              {/* Payment Method */}
-              <div className="col-md-4">
-                <label className="form-label">Payment Method</label>
-                <select
-                  className="form-select"
-                  value={formData.paymentMethod}
-                  onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
-                  required
-                >
-                  <option value="CASH">Cash</option>
-                  <option value="TRANSFER">Transfer</option>
-                  <option value="CARD">Card</option>
-                </select>
-              </div>
-            </div>
-            
-            {/* Services Section */}
-            <div className="mb-4">
-              <h6 className="border-bottom pb-2">Services</h6>
-              <div className="mb-3">
-                <select
-                  className="form-select"
-                  onChange={(e) => {
-                    const serviceId = e.target.value;
-                    if (serviceId) {
-                      const service = services.find(s => s.serviceId == serviceId);
-                      if (service) {
-                        handleAddService({
-                          ...service,
-                          quantity: 1,
-                          totalCost: parseFloat(service.costPerUnit)
-                        });
-                      }
-                      e.target.value = "";
-                    }
-                  }}
-                >
-                  <option value="">Select a service to add...</option>
-                  {services.map(service => (
-                    <option 
-                      key={service.serviceId} 
-                      value={service.serviceId}
-                      disabled={selectedServices.some(s => s.serviceId === service.serviceId)}
-                    >
-                      {service.serviceName} (₦{service.costPerUnit}/{service.measuringUnit})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              {/* Selected Services Table */}
-              {selectedServices.length > 0 && (
-                <div className="table-responsive mb-2">
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Service</th>
-                        <th>Unit Price</th>
-                        <th>Quantity</th>
-                        <th>Total</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedServices.map(service => (
-                        <tr key={service.serviceId}>
-                          <td>
-                            <div>{service.serviceName}</div>
-                            <small className="text-muted">{service.measuringUnit}</small>
-                          </td>
-                          <td>₦{parseFloat(service.costPerUnit).toLocaleString('en-US', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-})}</td>
-{/* <td>₦{(service.totalCost || service.costPerUnit).toLocaleString('en-US', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-})}</td> */}
-                          <td style={{ width: '100px' }}>
-                            <input
-                              type="number"
-                              min="1"
-                              className="form-control form-control-sm"
-                              value={service.quantity}
-                              onChange={(e) => {
-  const newQuantity = parseInt(e.target.value) || 1;
-  const updatedServices = selectedServices.map(s => 
-    s.serviceId === service.serviceId 
-      ? { 
-          ...s, 
-          quantity: newQuantity,
-          totalCost: parseFloat(s.price || s.costPerUnit) * newQuantity
-        } 
-      : s
-  );
-  setSelectedServices(updatedServices);
-  
-  // Update total cost with proper formatting
-  const newTotal = updatedServices.reduce(
-    (sum, s) => sum + (s.totalCost || 0), 0
-  );
-  setFormData(prev => ({
-    ...prev,
-    totalCost: newTotal.toFixed(2)
-  }));
-}}
-                            />
-                          </td>
-                          <td>₦{(service.totalCost || service.costPerUnit).toLocaleString()}</td>
-                          <td className="text-end">
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger"
-                              onClick={() => handleRemoveService(service.serviceId)}
-                            >
-                              Remove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              
-              {/* Subtotal */}
-             {selectedServices.length > 0 && (
-  <div className="text-end mb-3">
-    <div className="d-inline-block border-top pt-2 px-3">
-      <strong>Subtotal: ₦{parseFloat(formData.totalCost || 0).toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      })}</strong>
-    </div>
-  </div>
-)}
-            </div>
-            
-            {/* Commodities Section */}
-            <div className="mb-4">
-              <h6 className="border-bottom pb-2">Commodities</h6>
-              <div className="mb-3">
-                <select
-                  className="form-select"
-                  onChange={(e) => {
-                    const commodityId = e.target.value;
-                    if (commodityId) {
-                      const commodity = commodities.find(c => c.commodityId == commodityId);
-                      if (commodity) handleAddCommodity(commodity);
-                      e.target.value = "";
-                    }
-                  }}
-                >
-                  <option value="">Select commodities...</option>
-                  {commodities.map(commodity => (
-                    <option 
-                      key={commodity.commodityId} 
-                      value={commodity.commodityId}
-                      disabled={selectedCommodities.some(c => c.commodityId === commodity.commodityId)}
-                    >
-                      {commodity.commodityName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              {/* Selected Commodities */}
-              {selectedCommodities.length > 0 && (
-                <div className="d-flex flex-wrap gap-2">
-                  {selectedCommodities.map(commodity => (
-                    <span key={commodity.commodityId} className="badge bg-primary bg-opacity-10 text-primary p-2">
-                      {commodity.commodityName}
-                      <button 
-                        type="button" 
-                        className="ms-2 btn-close btn-close-primary"
-                        onClick={() => handleRemoveCommodity(commodity.commodityId)}
-                        style={{ fontSize: '0.5rem' }}
+              <div className="modal-body">
+                <form onSubmit={handleSubmit}>
+                  <div className="row g-3 mb-4">
+                    {/* Farmer Selection */}
+                    <div className="col-md-6">
+                      <label className="form-label">Farmer</label>
+                      <div className="input-group">
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedFarmer ? 
+                            `${selectedFarmer.farmerFirstName} ${selectedFarmer.farmerLastName} (${selectedFarmer.farmerId})` : 
+                            ""}
+                          readOnly
+                        />
+                        <button 
+                          className="btn btn-outline-primary" 
+                          type="button"
+                          onClick={() => setIsFarmerSearchOpen(true)}
+                        >
+                          Search
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* MSP Name */}
+                    <div className="col-md-6">
+                      <label className="form-label">MSP Name</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={selectedFarmer?.msp_info?.firstName ? 
+                          `${selectedFarmer.msp_info.firstName} ${selectedFarmer.msp_info.lastName}` : 
+                          selectedFarmer?.msp_info?.users?.firstName ?
+                          `${selectedFarmer.msp_info.users.firstName} ${selectedFarmer.msp_info.users.lastName}` :
+                          ""}
+                        readOnly
                       />
-                    </span>
-                  ))}
-                </div>
-              )}
+                    </div>
+                    
+                    {/* Project Selection */}
+                    <div className="col-md-6">
+                      <label className="form-label">Project</label>
+                      <select
+                        className="form-select"
+                        value={formData.projectId}
+                        onChange={(e) => setFormData({...formData, projectId: e.target.value})}
+                        required
+                      >
+                        <option value="">Select a project...</option>
+                        {projects.map(project => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Transaction Type */}
+                    <div className="col-md-6">
+                      <label className="form-label">Transaction Type</label>
+                      <select
+                        className="form-select"
+                        value={formData.transactionType}
+                        onChange={(e) => setFormData({...formData, transactionType: e.target.value})}
+                        required
+                      >
+                        <option value="SERVICE">Service</option>
+                        <option value="PRODUCT">Product</option>
+                      </select>
+                    </div>
+                    
+                    {/* Status */}
+                    <div className="col-md-4">
+                      <label className="form-label">Status</label>
+                      <select
+                        className="form-select"
+                        value={formData.transactionStatus}
+                        onChange={(e) => setFormData({...formData, transactionStatus: e.target.value})}
+                        required
+                      >
+                        <option value="Paid">Paid</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Failed">Failed</option>
+                      </select>
+                    </div>
+                    
+                    {/* Payment Method */}
+                    <div className="col-md-4">
+                      <label className="form-label">Payment Method</label>
+                      <select
+                        className="form-select"
+                        value={formData.paymentMethod}
+                        onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
+                        required
+                      >
+                        <option value="CASH">Cash</option>
+                        <option value="TRANSFER">Transfer</option>
+                        <option value="CARD">Card</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  {/* Services Section */}
+                  <div className="mb-4">
+                    <h6 className="border-bottom pb-2">Services</h6>
+                    <div className="mb-3">
+                      <select
+                        className="form-select"
+                        onChange={(e) => {
+                          const serviceId = e.target.value;
+                          if (serviceId) {
+                            const service = services.find(s => s.serviceId == serviceId);
+                            if (service) {
+                              handleAddService({
+                                ...service,
+                                quantity: 1,
+                                totalCost: parseFloat(service.cost)
+                              });
+                            }
+                            e.target.value = "";
+                          }
+                        }}
+                      >
+                        <option value="">Select a service to add...</option>
+                        {services.map(service => (
+                          <option 
+                            key={service.serviceId} 
+                            value={service.serviceId}
+                            disabled={selectedServices.some(s => s.serviceId === service.serviceId)}
+                          >
+                            {service.serviceName} (₦{service.cost}/{service.measuringUnit})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {selectedServices.length > 0 && (
+                      <div className="table-responsive mb-2">
+                        <table className="table table-sm">
+                          <thead>
+                            <tr>
+                              <th>Service</th>
+                              <th>Unit Price</th>
+                              <th>Quantity</th>
+                              <th>Total</th>
+                              <th></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedServices.map(service => (
+                              <tr key={service.serviceId}>
+                                <td>
+                                  <div>{service.serviceName}</div>
+                                  <small className="text-muted">{service.measuringUnit}</small>
+                                </td>
+                                <td>₦{parseFloat(service.cost).toLocaleString('en-US', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2
+                                })}</td>
+                                <td style={{ width: '100px' }}>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    className="form-control form-control-sm"
+                                    value={service.quantity}
+                                    onChange={(e) => {
+                                      const newQuantity = parseInt(e.target.value) || 1;
+                                      const updatedServices = selectedServices.map(s => 
+                                        s.serviceId === service.serviceId 
+                                          ? { 
+                                              ...s, 
+                                              quantity: newQuantity,
+                                              totalCost: parseFloat(s.price || s.cost) * newQuantity
+                                            } 
+                                          : s
+                                      );
+                                      setSelectedServices(updatedServices);
+                                      
+                                      const newTotal = updatedServices.reduce(
+                                        (sum, s) => sum + (s.totalCost || 0), 0
+                                      );
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        totalCost: newTotal.toFixed(2)
+                                      }));
+                                    }}
+                                  />
+                                </td>
+                                <td>₦{(service.totalCost || service.cost).toLocaleString()}</td>
+                                <td className="text-end">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={() => handleRemoveService(service.serviceId)}
+                                  >
+                                    Remove
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    
+                    {selectedServices.length > 0 && (
+                      <div className="text-end mb-3">
+                        <div className="d-inline-block border-top pt-2 px-3">
+                          <strong>Subtotal: ₦{parseFloat(formData.totalCost || 0).toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}</strong>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Commodities Section */}
+                  <div className="mb-4">
+                    <h6 className="border-bottom pb-2">Commodities</h6>
+                    <div className="mb-3">
+                      <select
+                        className="form-select"
+                        onChange={(e) => {
+                          const commodityId = e.target.value;
+                          if (commodityId) {
+                            const commodity = commodities.find(c => c.commodityId == commodityId);
+                            if (commodity) handleAddCommodity(commodity);
+                            e.target.value = "";
+                          }
+                        }}
+                      >
+                        <option value="">Select commodities...</option>
+                        {commodities.map(commodity => (
+                          <option 
+                            key={commodity.commodityId} 
+                            value={commodity.commodityId}
+                            disabled={selectedCommodities.some(c => c.commodityId === commodity.commodityId)}
+                          >
+                            {commodity.commodityName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {selectedCommodities.length > 0 && (
+                      <div className="d-flex flex-wrap gap-2">
+                        {selectedCommodities.map(commodity => (
+                          <span key={commodity.commodityId} className="badge bg-primary bg-opacity-10 text-primary p-2">
+                            {commodity.commodityName}
+                            <button 
+                              type="button" 
+                              className="ms-2 btn-close btn-close-primary"
+                              onClick={() => handleRemoveCommodity(commodity.commodityId)}
+                              style={{ fontSize: '0.5rem' }}
+                            />
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {error && (
+                    <div className="alert alert-danger">{error}</div>
+                  )}
+                  
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setIsModalOpen(false)}
+                      disabled={isSubmitting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={isSubmitting || !selectedFarmer || selectedServices.length === 0 || !formData.projectId}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                          Saving...
+                        </>
+                      ) : (
+                        'Create Transaction'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
-            
-            {error && (
-              <div className="alert alert-danger">{error}</div>
-            )}
-            
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setIsModalOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={isSubmitting || !selectedFarmer || selectedServices.length === 0}
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                    Saving...
-                  </>
-                ) : (
-                  'Create Transaction'
-                )}
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {/* Farmer Search Modal */}
       {isFarmerSearchOpen && (
@@ -787,29 +839,21 @@ const handleAddService = (service) => {
                     value={farmerSearchTerm}
                     onChange={(e) => setFarmerSearchTerm(e.target.value)}
                   />
-                  {/* <button
-                    className="btn btn-primary"
+                  <button
                     type="button"
+                    className="btn btn-primary"
+                    disabled={isSearching}
                     onClick={handleSearchFarmers}
                   >
-                    Search
-                  </button> */}
-
-                  <button
-                type="button"
-                className="btn btn-primary"
-                disabled={isSearching}
-                onClick={handleSearchFarmers}
-              >
-                {isSearching ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                    Searching...
-                  </>
-                ) : (
-                  'Search'
-                )}
-              </button>
+                    {isSearching ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        Searching...
+                      </>
+                    ) : (
+                      'Search'
+                    )}
+                  </button>
                 </div>
                 
                 {searchResults.length > 0 ? (
@@ -878,7 +922,7 @@ const handleAddService = (service) => {
                 ></button>
               </div>
               <div className="modal-body">
-                <div className="row">
+                <div classNameigno="row">
                   <div className="col-md-6">
                     <h6>Transaction Information</h6>
                     <div className="mb-3">
@@ -910,11 +954,15 @@ const handleAddService = (service) => {
                       <p className="form-control-static">{selectedTransaction.paymentMethod}</p>
                     </div>
                     <div className="mb-3">
+                      <label className="form-label">Project</label>
+                      <p className="form-control-static">{selectedTransaction.project_info?.projectName || 'N/A'}</p>
+                    </div>
+                    <div className="mbunionfs mb-3">
                       <label className="form-label">Date</label>
                       <p className="form-control-static">{formatDate(selectedTransaction.created_at)}</p>
                     </div>
                   </div>
-                  
+Alt text
                   <div className="col-md-6">
                     <h6>Farmer Information</h6>
                     <div className="mb-3">
@@ -962,7 +1010,6 @@ const handleAddService = (service) => {
                   </div>
                 </div>
                 
-                {/* Commodities Section */}
                 {selectedTransaction.transaction_commodity?.length > 0 && (
                   <div className="mt-4">
                     <h6>Commodities</h6>

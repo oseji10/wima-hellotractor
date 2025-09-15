@@ -526,7 +526,7 @@ const UsersTable = () => {
                       <th scope="col">Role</th>
                       <th scope="col">State</th>
                       <th scope="col">Hub</th>
-                      <th scope="col">Status</th>
+                      {/* <th scope="col">Status</th> */}
                       <th scope="col">Actions</th>
                     </tr>
                   </thead>
@@ -540,9 +540,14 @@ const UsersTable = () => {
                           <td>{user.email || 'N/A'}</td>
                           <td>{user.phoneNumber || 'N/A'}</td>
                           <td>{user.user_role?.roleName || 'N/A'}</td>
-                          <td>{user?.state_info?.stateName || 'N/A'}</td>
-                          <td>{user?.lga_info?.lgaName || 'N/A'}</td>
-                          <td>{user.status || 'N/A'}</td>
+                          <td>
+  {user?.state_coordinator?.state?.stateName ??
+   user?.community_lead?.lga_info?.state?.stateName ??
+   "N/A"}
+</td>
+
+                          <td>{user?.community_lead?.lga_info?.lgaName || 'N/A'}</td>
+                          {/* <td>{user.status || 'N/A'}</td> */}
                           <td>
                             <div className="d-flex">
                               <button
