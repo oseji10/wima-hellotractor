@@ -404,6 +404,15 @@ const MasterLayout = ({ children }) => {
       ];
     } else if (currentRole === 'Community Lead') {
       roleSpecificItems = [
+           <li key="msps">
+          <Link href="/dashboard/msps">
+            <Icon
+              icon="solar:users-group-rounded-line-duotone"
+              className="menu-icon"
+            />
+            <span>MSPs</span>
+          </Link>
+        </li>,
         <li key="farmers">
           <Link href="/dashboard/farmers">
             <Icon
@@ -473,7 +482,7 @@ const MasterLayout = ({ children }) => {
           <Icon icon="radix-icons:cross-2" />
         </button>
         <div>
-          <Link href="/" className="sidebar-logo">
+          <Link href="/dashboard" className="sidebar-logo">
             <Image 
               className="light-logo"
               src="/assets/images/wima-logo.svg" alt="Home Icon" width={300} height={70} 

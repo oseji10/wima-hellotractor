@@ -34,140 +34,76 @@ const MSPSTable = () => {
     perPage: 10,
     total: 0,
   });
-  const [isFiltered, setIsFiltered] = useState(false);
+  const [activeHubs, setActiveHubs] = useState([]);
+  const [modalSelectedState, setModalSelectedState] = useState("");
+  const [modalSelectedLga, setModalSelectedLga] = useState("");
+  const [modalSelectedProject, setModalSelectedProject] = useState("");
   const [editModalSelectedState, setEditModalSelectedState] = useState("");
   const [editModalSelectedLga, setEditModalSelectedLga] = useState("");
   const [editModalSelectedProject, setEditModalSelectedProject] = useState("");
+  const [userRole, setUserRole] = useState(null);
+  const [userStateId, setUserStateId] = useState(null);
 
-  // Fetch MSPs with filtering and pagination
+  // Fetch user role and stateId
   useEffect(() => {
-    const fetchMsps = async () => {
-      setLoadingMsps(true);
+    const fetchUserRole = async () => {
       try {
-        const params = {
-          page: pagination.currentPage,
-          per_page: pagination.perPage,
-        };
-
-        // Add filter params if any filter is active
-        if (selectedState) params.state = selectedState;
-        if (selectedLga) params.lga = selectedLga;
-        if (selectedProject) params.projectId = selectedProject;
-        if (searchTerm) params.search = searchTerm;
-
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/msps`, { params });
-        const data = response.data;
-        const mspsData = Array.isArray(data.data) ? data.data : [];
-
-        if (selectedState || selectedLga || selectedProject || searchTerm) {
-          // Using backend filtering
-          setDisplayedMsps(mspsData);
-          setIsFiltered(true);
-        } else {
-          // No filters, store all MSPs
-          setAllMsps(mspsData);
-          setDisplayedMsps(mspsData);
-          setIsFiltered(false);
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/user`);
+        setUserRole(response.data.role);
+        if (response.data.role === 'State Coordinator' || response.data.role === 'Community Lead') {
+          setUserStateId(response.data.stateId);
+          setSelectedState(response.data.stateId);
+          setModalSelectedState(response.data.stateId);
+          setEditModalSelectedState(response.data.stateId);
         }
-        
-        setPagination(prev => ({
-          ...prev,
-          totalPages: data.last_page || 1,
-          total: data.total || 0,
-        }));
       } catch (error) {
-        console.error("Error fetching MSPs:", error);
-        setError("Failed to load MSPs");
-        setAllMsps([]);
-        setDisplayedMsps([]);
-      } finally {
-        setLoadingMsps(false);
+        console.error("Error fetching user role:", error);
+        setError("Failed to load user profile");
       }
     };
-    fetchMsps();
-  }, [pagination.currentPage, pagination.perPage, selectedState, selectedLga, selectedProject, searchTerm]);
+    fetchUserRole();
+  }, []);
 
-  // Apply frontend filtering when we have all data and filters are active
+  // Fetch active hubs data
   useEffect(() => {
-    if (!isFiltered && (selectedState || selectedLga || selectedProject || searchTerm)) {
-      let filtered = [...allMsps];
-      
-      if (selectedState) {
-        filtered = filtered.filter(msp => 
-          msp.hub?.state?.toString() === selectedState.toString()
-        );
-      }
-      
-      if (selectedLga) {
-        filtered = filtered.filter(msp => 
-          msp.hub?.lga?.toString() === selectedLga.toString()
-        );
-      }
-      
-      if (selectedProject) {
-        filtered = filtered.filter(msp => 
-          msp.projectId?.toString() === selectedProject.toString()
-        );
-      }
-      
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        filtered = filtered.filter(msp => 
-          msp.users?.firstName?.toLowerCase().includes(term) ||
-          msp.users?.lastName?.toLowerCase().includes(term) ||
-          msp.users?.phoneNumber?.includes(term)
-        );
-      }
-      
-      // Calculate pagination for frontend-filtered results
-      const totalPages = Math.ceil(filtered.length / pagination.perPage);
-      const startIndex = (pagination.currentPage - 1) * pagination.perPage;
-      const paginatedData = filtered.slice(startIndex, startIndex + pagination.perPage);
-      
-      setDisplayedMsps(paginatedData);
-      setPagination(prev => ({
-        ...prev,
-        totalPages,
-        total: filtered.length,
-      }));
-    }
-  }, [allMsps, selectedState, selectedLga, selectedProject, searchTerm, pagination.currentPage, pagination.perPage, isFiltered]);
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    if (selectedState || selectedLga || selectedProject || searchTerm) {
-      setPagination(prev => ({ ...prev, currentPage: 1 }));
-    }
-  }, [selectedState, selectedLga, selectedProject, searchTerm]);
-
-  // Fetch states
-  useEffect(() => {
-    const fetchStates = async () => {
+    const fetchActiveHubs = async () => {
       setLoadingStates(true);
       setError(null);
       try {
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/active`);
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/all-active-hubs`);
         const data = response.data || response;
-        setStates(
-          Array.isArray(data)
-            ? data.map((state) => ({
-                id: state.state_info.stateId || state.id,
-                name: state.state_info.stateName || state.name,
-              }))
-            : []
-        );
+        
+        // Store the active hubs data
+        const hubs = Array.isArray(data) ? data : [];
+        setActiveHubs(hubs);
+        
+        // Extract unique states from active hubs
+        const uniqueStates = {};
+        hubs.forEach(hub => {
+          if (hub.state_info && hub.state_info.stateId && hub.state_info.stateName) {
+            uniqueStates[hub.state_info.stateId] = {
+              id: hub.state_info.stateId,
+              name: hub.state_info.stateName
+            };
+          } else {
+            console.warn("Invalid hub data, missing state_info:", hub);
+          }
+        });
+        
+        setStates(Object.values(uniqueStates));
       } catch (error) {
-        console.error("Error fetching states:", error);
+        console.error("Error fetching active hubs:", error);
         setError("Failed to load states. Please try again.");
         setStates([]);
+        setActiveHubs([]);
       } finally {
         setLoadingStates(false);
       }
     };
-    fetchStates();
+    fetchActiveHubs();
   }, []);
 
-  // Fetch projects
+  // Fetch projects data
   useEffect(() => {
     const fetchProjects = async () => {
       setLoadingProjects(true);
@@ -191,52 +127,115 @@ const MSPSTable = () => {
     fetchProjects();
   }, []);
 
-  // Fetch LGAs when state is selected
+  // Fetch LGAs based on selectedState
   useEffect(() => {
-    const fetchLgas = async () => {
-      if (!selectedState && !editModalSelectedState) {
-        setLgas([]);
-        setSelectedLga("");
-        setEditModalSelectedLga("");
-        return;
+    // Clear LGAs if no valid state is selected
+    if (!selectedState && !modalSelectedState && !editModalSelectedState) {
+      setLgas([]);
+      setSelectedLga("");
+      setModalSelectedLga("");
+      setEditModalSelectedLga("");
+      return;
+    }
+
+    // Determine the state to filter LGAs by
+    const effectiveStateId = selectedState || modalSelectedState || editModalSelectedState;
+    
+    if (!effectiveStateId) {
+      setLgas([]);
+      setSelectedLga("");
+      setModalSelectedLga("");
+      setEditModalSelectedLga("");
+      return;
+    }
+
+    // Filter active hubs by the effective state ID
+    const stateHubs = activeHubs.filter(hub => 
+      hub.state_info && hub.state_info.stateId && 
+      hub.state_info.stateId.toString() === effectiveStateId.toString()
+    );
+    
+    // Extract unique LGAs from the filtered hubs
+    const uniqueLgas = {};
+    stateHubs.forEach(hub => {
+      if (hub.lga_info && hub.lga_info.lgaId && hub.lga_info.lgaName) {
+        uniqueLgas[hub.lga_info.lgaId] = {
+          id: hub.lga_info.lgaId,
+          name: hub.lga_info.lgaName
+        };
+      } else {
+        console.warn("Invalid hub data, missing lga_info:", hub);
       }
-      
+    });
+    
+    setLgas(Object.values(uniqueLgas));
+  }, [selectedState, modalSelectedState, editModalSelectedState, activeHubs]);
+
+  // Fetch MSPs with filtering and pagination
+  useEffect(() => {
+    const fetchMsps = async () => {
+      setLoadingMsps(true);
       try {
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/lgas`, {
-          params: { state: selectedState || editModalSelectedState }
-        });
-        
-        const responseData = response.data || response;
-        const lgasData = responseData.data || responseData;
-        
-        setLgas(
-          Array.isArray(lgasData)
-            ? lgasData.map((lga) => ({
-                id: lga.lgaId || lga.id,
-                name: lga.lgaName || lga.name,
-              }))
-            : []
-        );
+        const params = {
+          page: pagination.currentPage,
+          per_page: pagination.perPage,
+        };
+
+        // Add filter params based on role
+        if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+          if (selectedState) params.state = selectedState;
+          if (selectedLga) params.lga = selectedLga;
+        } else if (userRole === 'State Coordinator' || userRole === 'Community Lead') {
+          if (userStateId) params.state = userStateId;
+          if (selectedLga && userRole === 'State Coordinator') params.lga = selectedLga;
+        }
+        if (selectedProject) params.projectId = selectedProject;
+        if (searchTerm) params.search = searchTerm;
+
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/msps`, { params });
+        const data = response.data;
+        const mspsData = Array.isArray(data.data) ? data.data : [];
+
+        setDisplayedMsps(mspsData);
+        setAllMsps(mspsData);
+        setPagination(prev => ({
+          ...prev,
+          totalPages: data.last_page || 1,
+          total: data.total || 0,
+        }));
       } catch (error) {
-        console.error("Error fetching LGAs:", error);
-        setLgas([]);
-        setSelectedLga("");
-        setEditModalSelectedLga("");
+        console.error("Error fetching MSPs:", error);
+        setError("Failed to load MSPs");
+        setAllMsps([]);
+        setDisplayedMsps([]);
+      } finally {
+        setLoadingMsps(false);
       }
     };
-    fetchLgas();
-  }, [selectedState, editModalSelectedState]);
+    if (userRole) {
+      fetchMsps();
+    }
+  }, [pagination.currentPage, pagination.perPage, selectedState, selectedLga, selectedProject, searchTerm, userRole, userStateId]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    if (selectedState || selectedLga || selectedProject || searchTerm) {
+      setPagination(prev => ({ ...prev, currentPage: 1 }));
+    }
+  }, [selectedState, selectedLga, selectedProject, searchTerm]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setSelectedState("");
-    setSelectedLga("");
-    setSelectedProject("");
+    setModalSelectedLga("");
+    setModalSelectedProject("");
     setFirstName("");
     setLastName("");
     setPhoneNumber("");
     setEmail("");
     setError(null);
+    if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+      setModalSelectedState("");
+    }
   };
 
   // View Modal Handler
@@ -248,13 +247,15 @@ const MSPSTable = () => {
   // Edit Modal Handler
   const handleEdit = (msp) => {
     setSelectedMsp(msp);
-    setEditModalSelectedState(msp.hub?.state || "");
     setEditModalSelectedLga(msp.hub?.lga || "");
     setEditModalSelectedProject(msp.projectId || "");
     setFirstName(msp.users?.firstName || "");
     setLastName(msp.users?.lastName || "");
     setPhoneNumber(msp.users?.phoneNumber || "");
     setEmail(msp.users?.email || "");
+    if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+      setEditModalSelectedState(msp.hub?.state || "");
+    }
     setEditModalOpen(true);
   };
 
@@ -271,7 +272,6 @@ const MSPSTable = () => {
       const response = await api.delete(`/msps/${selectedMsp.id}`);
       
       if (response.status >= 200 && response.status < 300) {
-        // Remove from both allMsps and displayedMsps
         setAllMsps(prev => prev.filter(m => m.id !== selectedMsp.id));
         setDisplayedMsps(prev => prev.filter(m => m.id !== selectedMsp.id));
         setDeleteModalOpen(false);
@@ -296,41 +296,53 @@ const MSPSTable = () => {
         lastName,
         phoneNumber,
         email,
-        state: editModalSelectedState,
-        lga: editModalSelectedLga,
         projectId: editModalSelectedProject,
       };
+      
+      // Include hub and lga based on role
+      if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+        payload.state = editModalSelectedState;
+        payload.lga = editModalSelectedLga;
+      } else if (userRole === 'State Coordinator') {
+        payload.state = userStateId;
+        payload.lga = editModalSelectedLga;
+      } else if (userRole === 'Community Lead') {
+        payload.state = userStateId;
+      }
       
       const response = await api.put(`/msps/${selectedMsp.id}`, payload);
       
       if (response.status >= 200 && response.status < 300) {
-        // Get state, LGA, and project names from existing data
-        const stateObj = states.find(s => s.id.toString() === editModalSelectedState.toString());
+        const stateObj = states.find(s => s.id.toString() === (editModalSelectedState || userStateId).toString());
         const lgaObj = lgas.find(l => l.id.toString() === editModalSelectedLga.toString());
         const projectObj = projects.find(p => p.id.toString() === editModalSelectedProject.toString());
         
-        // Create updated MSP with all required fields
         const updatedMsp = {
           ...response.data,
-          hub: {
-            ...selectedMsp.hub,
-            state: editModalSelectedState,
-            lga: editModalSelectedLga,
-          },
-          projectId: editModalSelectedProject,
-          project_info: {
-            projectName: projectObj?.name || 'N/A'
-          },
           users: {
             ...selectedMsp.users,
             firstName,
             lastName,
             phoneNumber,
             email,
+          },
+          projectId: editModalSelectedProject,
+          project_info: {
+            projectName: projectObj?.name || 'N/A'
+          },
+          hub: {
+            ...selectedMsp.hub,
+            state: editModalSelectedState || userStateId,
+            lga: editModalSelectedLga,
+            states: {
+              stateName: stateObj?.name || 'N/A'
+            },
+            lgas: {
+              lgaName: lgaObj?.name || 'N/A'
+            }
           }
         };
         
-        // Update the MSPs arrays
         setAllMsps(prev => 
           prev.map(m => m.id === selectedMsp.id ? updatedMsp : m)
         );
@@ -355,8 +367,18 @@ const MSPSTable = () => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    if (!selectedState || !selectedLga || !selectedProject) {
-      setError("Please select state, LGA, and project");
+    if ((userRole === 'ADMIN' || userRole === 'National Coordinator') && (!modalSelectedState || !modalSelectedLga || !modalSelectedProject)) {
+      setError("Please select state, hub, and project");
+      setIsSubmitting(false);
+      return;
+    }
+    if (userRole === 'State Coordinator' && (!modalSelectedLga || !modalSelectedProject)) {
+      setError("Please select hub and project");
+      setIsSubmitting(false);
+      return;
+    }
+    if (userRole === 'Community Lead' && !modalSelectedProject) {
+      setError("Please select project");
       setIsSubmitting(false);
       return;
     }
@@ -367,15 +389,23 @@ const MSPSTable = () => {
         lastName,
         phoneNumber,
         email,
-        state: selectedState,
-        lga: selectedLga,
-        projectId: selectedProject,
+        projectId: modalSelectedProject,
       };
+      
+      // Include state and lga based on role
+      if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+        payload.state = modalSelectedState;
+        payload.lga = modalSelectedLga;
+      } else if (userRole === 'State Coordinator') {
+        payload.state = userStateId;
+        payload.lga = modalSelectedLga;
+      } else if (userRole === 'Community Lead') {
+        payload.state = userStateId;
+      }
       
       const response = await api.post('/msps', payload);
       
       if (response.status >= 200 && response.status < 300) {
-        // Refresh the MSPs after successful addition
         const mspsResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/msps`);
         const newMsps = Array.isArray(mspsResponse.data.data) ? mspsResponse.data.data : [];
         
@@ -421,42 +451,46 @@ const MSPSTable = () => {
         <div className="card-body">
           {/* Filter and Search Section - Made responsive */}
           <div className="row mb-4 g-3">
-            <div className="col-12 col-md-6 col-lg-3">
-              <label htmlFor="stateFilter" className="form-label">Filter by State</label>
-              <select
-                id="stateFilter"
-                className="form-select"
-                value={selectedState}
-                onChange={(e) => setSelectedState(e.target.value)}
-                disabled={loadingStates}
-              >
-                <option value="">All States</option>
-                {states.map((state) => (
-                  <option key={state.id} value={state.id}>
-                    {state.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="col-12 col-md-6 col-lg-3">
-              <label htmlFor="lgaFilter" className="form-label">Filter by Hubs</label>
-              <select
-                id="lgaFilter"
-                className="form-select"
-                value={selectedLga}
-                onChange={(e) => setSelectedLga(e.target.value)}
-                disabled={!selectedState || lgas.length === 0}
-              >
-                <option value="">All Hubs</option>
-                {lgas.map((lga) => (
-                  <option key={lga.id} value={lga.id}>
-                    {lga.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
+            {(userRole === 'ADMIN' || userRole === 'National Coordinator') && (
+              <div className="col-12 col-md-6 col-lg-3">
+                <label htmlFor="stateFilter" className="form-label">Filter by State</label>
+                <select
+                  id="stateFilter"
+                  className="form-select"
+                  value={selectedState}
+                  onChange={(e) => setSelectedState(e.target.value)}
+                  disabled={loadingStates}
+                >
+                  <option value="">All States</option>
+                  {states.map((state) => (
+                    <option key={state.id} value={state.id}>
+                      {state.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {(userRole === 'ADMIN' || userRole === 'National Coordinator' || userRole === 'State Coordinator') && (
+              <div className="col-12 col-md-6 col-lg-3">
+                <label htmlFor="lgaFilter" className="form-label">Filter by Hubs</label>
+                <select
+                  id="lgaFilter"
+                  className="form-select"
+                  value={selectedLga}
+                  onChange={(e) => setSelectedLga(e.target.value)}
+                  disabled={lgas.length === 0 || loadingStates}
+                >
+                  <option value="">All Hubs</option>
+                  {lgas.map((lga) => (
+                    <option key={lga.id} value={lga.id}>
+                      {lga.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="col-12 col-md-6 col-lg-3">
               <label htmlFor="projectFilter" className="form-label">Filter by Project</label>
               <select
@@ -474,7 +508,7 @@ const MSPSTable = () => {
                 ))}
               </select>
             </div>
-            
+
             <div className="col-12 col-md-6 col-lg-3">
               <label htmlFor="searchMsp" className="form-label">Search by Name or Phone</label>
               <div className="input-group">
@@ -496,12 +530,18 @@ const MSPSTable = () => {
               <button 
                 className="btn btn-secondary w-100"
                 onClick={() => {
-                  setSelectedState("");
+                  if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+                    setSelectedState("");
+                  }
                   setSelectedLga("");
                   setSelectedProject("");
                   setSearchTerm("");
                 }}
-                disabled={!selectedState && !selectedLga && !selectedProject && !searchTerm}
+                disabled={
+                  (userRole === 'ADMIN' || userRole === 'National Coordinator') ? 
+                  (!selectedState && !selectedLga && !selectedProject && !searchTerm) :
+                  (!selectedLga && !selectedProject && !searchTerm)
+                }
               >
                 Reset Filters
               </button>
@@ -545,9 +585,10 @@ const MSPSTable = () => {
                           <td>
                             {states.find(s => s.id === msp.hub?.state)?.name || 'N/A'}
                           </td>
-                          <td>
-                            {msp.hub?.lgas?.lgaName || 'N/A'}
-                          </td>
+                          {/* <td>
+                            {lgas.find(l => l.id === msp.hub?.lga)?.name || 'N/A'}
+                          </td> */}
+                          <td>{msp.hub?.lgas?.lgaName || 'N/A'}</td>
                           <td>
                             {msp.projects?.projectName || 'N/A'}
                           </td>
@@ -688,7 +729,7 @@ const MSPSTable = () => {
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
                   <div className="row">
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-6 mb-3">
                       <label htmlFor="firstName" className="form-label">First Name</label>
                       <input
                         type="text"
@@ -700,7 +741,7 @@ const MSPSTable = () => {
                         required
                       />
                     </div>
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-6 mb-3">
                       <label htmlFor="lastName" className="form-label">Last Name</label>
                       <input
                         type="text"
@@ -715,7 +756,7 @@ const MSPSTable = () => {
                   </div>
                   
                   <div className="row">
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-6 mb-3">
                       <label htmlFor="phoneNumber" className="form-label">Phone Number</label>
                       <input
                         type="tel"
@@ -727,7 +768,7 @@ const MSPSTable = () => {
                         required
                       />
                     </div>
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-6 mb-3">
                       <label htmlFor="email" className="form-label">Email</label>
                       <input
                         type="email"
@@ -736,50 +777,55 @@ const MSPSTable = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         disabled={isSubmitting}
+                        required
                       />
                     </div>
                   </div>
                   
-                  <div className="mb-3">
-                    <label htmlFor="state" className="form-label">State</label>
-                    {loadingStates ? (
-                      <div className="text-muted">Loading states...</div>
-                    ) : (
+                  {(userRole === 'ADMIN' || userRole === 'National Coordinator') && (
+                    <div className="mb-3">
+                      <label htmlFor="state" className="form-label">State</label>
+                      {loadingStates ? (
+                        <div className="text-muted">Loading states...</div>
+                      ) : (
+                        <select
+                          id="state"
+                          className="form-select"
+                          value={modalSelectedState}
+                          onChange={(e) => setModalSelectedState(e.target.value)}
+                          disabled={isSubmitting}
+                          required
+                        >
+                          <option value="">Select State</option>
+                          {states.map((state) => (
+                            <option key={state.id} value={state.id}>
+                              {state.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
+                  {(userRole === 'ADMIN' || userRole === 'National Coordinator' || userRole === 'State Coordinator') && (
+                    <div className="mb-3">
+                      <label htmlFor="lga" className="form-label">Hub</label>
                       <select
-                        id="state"
+                        id="lga"
                         className="form-select"
-                        value={selectedState}
-                        onChange={(e) => setSelectedState(e.target.value)}
-                        disabled={isSubmitting}
+                        value={modalSelectedLga}
+                        onChange={(e) => setModalSelectedLga(e.target.value)}
+                        disabled={lgas.length === 0 || isSubmitting}
                         required
                       >
-                        <option value="">Select State</option>
-                        {states.map((state) => (
-                          <option key={state.id} value={state.id}>
-                            {state.name}
+                        <option value="">Select Hub</option>
+                        {lgas.map((lga) => (
+                          <option key={lga.id} value={lga.id}>
+                            {lga.name}
                           </option>
                         ))}
                       </select>
-                    )}
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="lga" className="form-label">LGA</label>
-                    <select
-                      id="lga"
-                      className="form-select"
-                      value={selectedLga}
-                      onChange={(e) => setSelectedLga(e.target.value)}
-                      disabled={!selectedState || lgas.length === 0 || isSubmitting}
-                      required
-                    >
-                      <option value="">Select LGA</option>
-                      {lgas.map((lga) => (
-                        <option key={lga.id} value={lga.id}>
-                          {lga.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    </div>
+                  )}
                   <div className="mb-3">
                     <label htmlFor="project" className="form-label">Project</label>
                     {loadingProjects ? (
@@ -788,8 +834,8 @@ const MSPSTable = () => {
                       <select
                         id="project"
                         className="form-select"
-                        value={selectedProject}
-                        onChange={(e) => setSelectedProject(e.target.value)}
+                        value={modalSelectedProject}
+                        onChange={(e) => setModalSelectedProject(e.target.value)}
                         disabled={isSubmitting}
                         required
                       >
@@ -819,7 +865,12 @@ const MSPSTable = () => {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={!selectedState || !selectedLga || !selectedProject || isSubmitting}
+                      disabled={
+                        (userRole === 'ADMIN' || userRole === 'National Coordinator') && (!modalSelectedState || !modalSelectedLga || !modalSelectedProject) ||
+                        (userRole === 'State Coordinator' && (!modalSelectedLga || !modalSelectedProject)) ||
+                        (userRole === 'Community Lead' && !modalSelectedProject) ||
+                        isSubmitting
+                      }
                     >
                       {isSubmitting ? (
                         <>
@@ -871,7 +922,7 @@ const MSPSTable = () => {
                   </p>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">LGA</label>
+                  <label className="form-label">Hub</label>
                   <p className="form-control-static">
                     {lgas.find(l => l.id === selectedMsp?.hub?.lga)?.name || 'N/A'}
                   </p>
@@ -880,6 +931,12 @@ const MSPSTable = () => {
                   <label className="form-label">Project</label>
                   <p className="form-control-static">
                     {selectedMsp?.project_info?.projectName || 'N/A'}
+                  </p>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Status</label>
+                  <p className="form-control-static">
+                    {selectedMsp?.status || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -914,7 +971,7 @@ const MSPSTable = () => {
               <div className="modal-body">
                 <form onSubmit={handleUpdate}>
                   <div className="row">
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-6 mb-3">
                       <label htmlFor="editFirstName" className="form-label">First Name</label>
                       <input
                         type="text"
@@ -926,7 +983,7 @@ const MSPSTable = () => {
                         required
                       />
                     </div>
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-6 mb-3">
                       <label htmlFor="editLastName" className="form-label">Last Name</label>
                       <input
                         type="text"
@@ -941,7 +998,7 @@ const MSPSTable = () => {
                   </div>
                   
                   <div className="row">
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-6 mb-3">
                       <label htmlFor="editPhoneNumber" className="form-label">Phone Number</label>
                       <input
                         type="tel"
@@ -953,7 +1010,7 @@ const MSPSTable = () => {
                         required
                       />
                     </div>
-                    <div className="col-md-6 mb-3">
+                    <div className="col-12 col-md-6 mb-3">
                       <label htmlFor="editEmail" className="form-label">Email</label>
                       <input
                         type="email"
@@ -962,46 +1019,51 @@ const MSPSTable = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         disabled={isSubmitting}
+                        required
                       />
                     </div>
                   </div>
                   
-                  <div className="mb-3">
-                    <label htmlFor="editState" className="form-label">State</label>
-                    <select
-                      id="editState"
-                      className="form-select"
-                      value={editModalSelectedState}
-                      onChange={(e) => setEditModalSelectedState(e.target.value)}
-                      disabled={isSubmitting}
-                      required
-                    >
-                      <option value="">Select State</option>
-                      {states.map((state) => (
-                        <option key={state.id} value={state.id}>
-                          {state.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="editLga" className="form-label">LGA</label>
-                    <select
-                      id="editLga"
-                      className="form-select"
-                      value={editModalSelectedLga}
-                      onChange={(e) => setEditModalSelectedLga(e.target.value)}
-                      disabled={!editModalSelectedState || lgas.length === 0 || isSubmitting}
-                      required
-                    >
-                      <option value="">Select LGA</option>
-                      {lgas.map((lga) => (
-                        <option key={lga.id} value={lga.id}>
-                          {lga.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {(userRole === 'ADMIN' || userRole === 'National Coordinator') && (
+                    <div className="mb-3">
+                      <label htmlFor="editState" className="form-label">State</label>
+                      <select
+                        id="editState"
+                        className="form-select"
+                        value={editModalSelectedState}
+                        onChange={(e) => setEditModalSelectedState(e.target.value)}
+                        disabled={isSubmitting}
+                        required
+                      >
+                        <option value="">Select State</option>
+                        {states.map((state) => (
+                          <option key={state.id} value={state.id}>
+                            {state.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {(userRole === 'ADMIN' || userRole === 'National Coordinator' || userRole === 'State Coordinator') && (
+                    <div className="mb-3">
+                      <label htmlFor="editLga" className="form-label">Hub</label>
+                      <select
+                        id="editLga"
+                        className="form-select"
+                        value={editModalSelectedLga}
+                        onChange={(e) => setEditModalSelectedLga(e.target.value)}
+                        disabled={lgas.length === 0 || isSubmitting}
+                        required
+                      >
+                        <option value="">Select Hub</option>
+                        {lgas.map((lga) => (
+                          <option key={lga.id} value={lga.id}>
+                            {lga.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div className="mb-3">
                     <label htmlFor="editProject" className="form-label">Project</label>
                     <select
@@ -1037,7 +1099,12 @@ const MSPSTable = () => {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={!editModalSelectedState || !editModalSelectedLga || !editModalSelectedProject || isSubmitting}
+                      disabled={
+                        (userRole === 'ADMIN' || userRole === 'National Coordinator') && (!editModalSelectedState || !editModalSelectedLga || !editModalSelectedProject) ||
+                        (userRole === 'State Coordinator' && (!editModalSelectedLga || !editModalSelectedProject)) ||
+                        (userRole === 'Community Lead' && !editModalSelectedProject) ||
+                        isSubmitting
+                      }
                     >
                       {isSubmitting ? (
                         <>
