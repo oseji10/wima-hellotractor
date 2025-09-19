@@ -43,7 +43,7 @@ const MSPSTable = () => {
   const [editModalSelectedProject, setEditModalSelectedProject] = useState("");
   const [userRole, setUserRole] = useState(null);
   const [userStateId, setUserStateId] = useState(null);
-
+  const [userLgaId, setUserLgaId] = useState(null);
   // Fetch user role and stateId
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -55,6 +55,7 @@ const MSPSTable = () => {
           setSelectedState(response.data.stateId);
           setModalSelectedState(response.data.stateId);
           setEditModalSelectedState(response.data.stateId);
+          setUserLgaId(response.data.communityId || null); 
         }
       } catch (error) {
         console.error("Error fetching user role:", error);
@@ -390,10 +391,11 @@ const MSPSTable = () => {
         phoneNumber,
         email,
         projectId: modalSelectedProject,
+        hub: userLgaId,
       };
       
       // Include state and lga based on role
-      if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+      if (userRole === 'ADMIN' || userRole === 'National Coordinator' || userRole === 'Community Lead') {
         payload.state = modalSelectedState;
         payload.lga = modalSelectedLga;
       } else if (userRole === 'State Coordinator') {
@@ -439,15 +441,17 @@ const MSPSTable = () => {
       <div className="card">
         <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
           <h5 className="card-title mb-3 mb-md-0">Mechanized Service Providers</h5>
+          {(userRole === 'Community Lead' &&
           <button
             className="btn btn-primary"
             onClick={() => setIsModalOpen(true)}
             disabled={loadingMsps}
           >
-            {loadingMsps ? 'Loading...' : 'Add MSP'}
+            {/* {loadingMsps ? 'Loading...' : 'Add MSP'} */}
+            Add MSP
           </button>
+          )}
         </div>
-        
         <div className="card-body">
           {/* Filter and Search Section - Made responsive */}
           <div className="row mb-4 g-3">
@@ -601,6 +605,9 @@ const MSPSTable = () => {
                               >
                                 <Icon icon="iconamoon:eye-light" width={16} />
                               </button>
+
+                               {(userRole === 'National Coordinator') && 
+                               <>
                               <button
                                 className="w-32-px h-32-px me-2 bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
                                 onClick={() => handleEdit(msp)}
@@ -615,6 +622,8 @@ const MSPSTable = () => {
                               >
                                 <Icon icon="mingcute:delete-2-line" width={16} />
                               </button>
+                              </>
+                               }
                             </div>
                           </td>
                         </tr>

@@ -14,7 +14,9 @@ const Transactions = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedProject, setSelectedProject] = useState(""); // New state for project filter
+  const [selectedState, setSelectedState] = useState("");
+  const [selectedLga, setSelectedLga] = useState("");
+  const [selectedProject, setSelectedProject] = useState("");
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -31,6 +33,16 @@ const Transactions = () => {
   const [selectedCommodities, setSelectedCommodities] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
+  const [states, setStates] = useState([]);
+  const [lgas, setLgas] = useState([]);
+  const [activeHubs, setActiveHubs] = useState([]);
+  const [loadingStates, setLoadingStates] = useState(false);
+  const [modalSelectedState, setModalSelectedState] = useState("");
+  const [modalSelectedLga, setModalSelectedLga] = useState("");
+  const [modalSelectedProject, setModalSelectedProject] = useState("");
+  const [userRole, setUserRole] = useState(null);
+  const [userStateId, setUserStateId] = useState(null);
+  const [userLgaId, setUserLgaId] = useState(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -42,17 +54,111 @@ const Transactions = () => {
     paymentMethod: "Cash",
     hub: "",
     transaction_commodity: [],
-    projectId: "" // Added projectId to formData
+    projectId: ""
   });
 
   // Status colors mapping
   const statusColors = {
     Paid: "bg-green text-green dark:text-green dark:bg-green",
     Pending: "bg-yellow text-yellow",
-    FAILED: "bg-red text-red",
+    Failed: "bg-red text-red",
   };
 
-  // Fetch transactions
+  // Fetch user role, stateId, and lgaId
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/user`);
+        setUserRole(response.data.role);
+        if (response.data.role === 'State Coordinator' || response.data.role === 'Community Lead') {
+          setUserStateId(response.data.stateId || null);
+          setUserLgaId(response.data.communityId || null);
+          setSelectedState(response.data.stateId || "");
+          setModalSelectedState(response.data.stateId || "");
+          if (response.data.role === 'Community Lead' && response.data.communityId) {
+            setModalSelectedLga(response.data.communityId);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+        setError("Failed to load user profile");
+      }
+    };
+    fetchUserRole();
+  }, []);
+
+  // Fetch active hubs data
+  useEffect(() => {
+    const fetchActiveHubs = async () => {
+      setLoadingStates(true);
+      setError(null);
+      try {
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/all-active-hubs`);
+        const data = response.data || response;
+        const hubs = Array.isArray(data) ? data : [];
+        setActiveHubs(hubs);
+        
+        const uniqueStates = {};
+        hubs.forEach(hub => {
+          if (hub.state_info && hub.state_info.stateId && hub.state_info.stateName) {
+            uniqueStates[hub.state_info.stateId] = {
+              id: hub.state_info.stateId,
+              name: hub.state_info.stateName
+            };
+          }
+        });
+        setStates(Object.values(uniqueStates));
+      } catch (error) {
+        console.error("Error fetching active hubs:", error);
+        setError("Failed to load hubs. Please try again.");
+        setStates([]);
+        setActiveHubs([]);
+      } finally {
+        setLoadingStates(false);
+      }
+    };
+    fetchActiveHubs();
+  }, []);
+
+  // Fetch LGAs based on selectedState
+  useEffect(() => {
+    if (!selectedState && !modalSelectedState) {
+      setLgas([]);
+      setSelectedLga("");
+      if (userRole !== 'Community Lead') {
+        setModalSelectedLga("");
+      }
+      return;
+    }
+
+    const effectiveStateId = selectedState || modalSelectedState;
+    if (!effectiveStateId) {
+      setLgas([]);
+      setSelectedLga("");
+      if (userRole !== 'Community Lead') {
+        setModalSelectedLga("");
+      }
+      return;
+    }
+
+    const stateHubs = activeHubs.filter(hub => 
+      hub.state_info && hub.state_info.stateId && 
+      hub.state_info.stateId.toString() === effectiveStateId.toString()
+    );
+    
+    const uniqueLgas = {};
+    stateHubs.forEach(hub => {
+      if (hub.lga_info && hub.lga_info.lgaId && hub.lga_info.lgaName) {
+        uniqueLgas[hub.lga_info.lgaId] = {
+          id: hub.lga_info.lgaId,
+          name: hub.lga_info.lgaName
+        };
+      }
+    });
+    setLgas(Object.values(uniqueLgas));
+  }, [selectedState, modalSelectedState, activeHubs, userRole]);
+
+  // Fetch transactions with state and hub filters
   useEffect(() => {
     const fetchTransactions = async () => {
       setLoading(true);
@@ -61,8 +167,18 @@ const Transactions = () => {
           page: pagination.currentPage,
           per_page: pagination.perPage,
           ...(searchTerm && { search: searchTerm }),
-          ...(selectedProject && { projectId: selectedProject }) // Add project filter
+          ...(selectedProject && { projectId: selectedProject }),
         };
+
+        // Add state and hub filters based on role
+        if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+          if (selectedState) params.state = selectedState;
+          if (selectedLga) params.lga = selectedLga;
+        } else if (userRole === 'State Coordinator' || userRole === 'Community Lead') {
+          if (userStateId) params.state = userStateId;
+          if (selectedLga && userRole === 'State Coordinator') params.lga = selectedLga;
+          if (userLgaId && userRole === 'Community Lead') params.lga = userLgaId;
+        }
 
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/transactions`, { params });
         
@@ -86,8 +202,10 @@ const Transactions = () => {
       }
     };
     
-    fetchTransactions();
-  }, [pagination.currentPage, pagination.perPage, searchTerm, selectedProject]); // Added selectedProject to dependencies
+    if (userRole) {
+      fetchTransactions();
+    }
+  }, [pagination.currentPage, pagination.perPage, searchTerm, selectedProject, selectedState, selectedLga, userRole, userStateId, userLgaId]);
 
   // Fetch projects data
   useEffect(() => {
@@ -130,7 +248,13 @@ const Transactions = () => {
     fetchServicesAndCommodities();
   }, []);
 
-  // View Modal Handler
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    if (selectedState || selectedLga || selectedProject || searchTerm) {
+      setPagination(prev => ({ ...prev, currentPage: 1 }));
+    }
+  }, [selectedState, selectedLga, selectedProject, searchTerm]);
+
   const handleView = (transaction) => {
     setSelectedTransaction(transaction);
     setViewModalOpen(true);
@@ -160,7 +284,8 @@ const Transactions = () => {
     setFormData(prev => ({
       ...prev,
       farmer: farmer.farmerId,
-      msp: farmer.msp
+      msp: farmer.msp,
+      hub: farmer.hub || (userRole === 'Community Lead' ? userLgaId : modalSelectedLga)
     }));
     setIsFarmerSearchOpen(false);
   };
@@ -216,6 +341,34 @@ const Transactions = () => {
     setIsSubmitting(true);
     
     try {
+      if (!formData.farmer || !formData.projectId) {
+        setError("Please select a farmer and project");
+        setIsSubmitting(false);
+        return;
+      }
+      if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+        if (!modalSelectedState || !modalSelectedLga) {
+          setError("Please select state and hub");
+          setIsSubmitting(false);
+          return;
+        }
+        formData.hub = modalSelectedLga;
+      } else if (userRole === 'State Coordinator') {
+        if (!modalSelectedLga) {
+          setError("Please select hub");
+          setIsSubmitting(false);
+          return;
+        }
+        formData.hub = modalSelectedLga;
+      } else if (userRole === 'Community Lead') {
+        if (!userLgaId) {
+          setError("Hub not assigned to your profile. Contact support.");
+          setIsSubmitting(false);
+          return;
+        }
+        formData.hub = userLgaId;
+      }
+
       const response = await api.post('/transactions', formData);
       
       if (response.status >= 200 && response.status < 300) {
@@ -235,12 +388,18 @@ const Transactions = () => {
           paymentMethod: "Cash",
           hub: "",
           transaction_commodity: [],
-          projectId: "" // Reset projectId
+          projectId: ""
         });
         setSelectedFarmer(null);
         setSelectedServices([]);
         setSelectedCommodities([]);
         setError(null);
+        if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+          setModalSelectedState("");
+          setModalSelectedLga("");
+        } else if (userRole === 'State Coordinator') {
+          setModalSelectedLga("");
+        }
       } else {
         throw new Error(response.data?.message || 'Failed to add transaction');
       }
@@ -268,36 +427,62 @@ const Transactions = () => {
       <div className="card">
         <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
           <h5 className="card-title mb-3 mb-md-0">Transactions</h5>
+           {(userRole === 'Community Lead') && (
           <button
             className="btn btn-primary"
             onClick={() => setIsModalOpen(true)}
-            disabled={loading}
+            disabled={loading || (userRole === 'Community Lead' && !userLgaId)}
           >
-            {loading ? 'Loading...' : 'Add Transaction'}
+            {/* {loading ? 'Loading...' : 'Add Transaction'} */}
+            Add Transaction
           </button>
+           )}
         </div>
         
         <div className="card-body">
-          {/* Search Section */}
+          {/* Search and Filter Section */}
           <div className="row mb-4 g-3">
-            <div className="col-12 col-md-6 col-lg-4">
-              <label htmlFor="searchTransaction" className="form-label">Search</label>
-              <div className="input-group">
-                <input
-                  type="text"
-                  id="searchTransaction"
-                  className="form-control"
-                  placeholder="Search by reference, MSP or farmer..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <button className="btn btn-outline-secondary" type="button">
-                  <Icon icon="ion:search" />
-                </button>
+            {(userRole === 'ADMIN' || userRole === 'National Coordinator') && (
+              <div className="col-12 col-md-6 col-lg-3">
+                <label htmlFor="stateFilter" className="form-label">Filter by State</label>
+                <select
+                  id="stateFilter"
+                  className="form-select"
+                  value={selectedState}
+                  onChange={(e) => setSelectedState(e.target.value)}
+                  disabled={loadingStates}
+                >
+                  <option value="">All States</option>
+                  {states.map((state) => (
+                    <option key={state.id} value={state.id}>
+                      {state.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
-            
-            <div className="col-12 col-md-6 col-lg-4">
+            )}
+
+            {(userRole === 'ADMIN' || userRole === 'National Coordinator' || userRole === 'State Coordinator') && (
+              <div className="col-12 col-md-6 col-lg-3">
+                <label htmlFor="lgaFilter" className="form-label">Filter by Hub</label>
+                <select
+                  id="lgaFilter"
+                  className="form-select"
+                  value={selectedLga}
+                  onChange={(e) => setSelectedLga(e.target.value)}
+                  disabled={lgas.length === 0 || loadingStates}
+                >
+                  <option value="">All Hubs</option>
+                  {lgas.map((lga) => (
+                    <option key={lga.id} value={lga.id}>
+                      {lga.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="col-12 col-md-6 col-lg-3">
               <label htmlFor="projectFilter" className="form-label">Filter by Project</label>
               <select
                 id="projectFilter"
@@ -314,15 +499,40 @@ const Transactions = () => {
                 ))}
               </select>
             </div>
-            
+
+            <div className="col-12 col-md-6 col-lg-3">
+              <label htmlFor="searchTransaction" className="form-label">Search</label>
+              <div className="input-group">
+                <input
+                  type="text"
+                  id="searchTransaction"
+                  className="form-control"
+                  placeholder="Search by reference, MSP or farmer..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <button className="btn btn-outline-secondary" type="button">
+                  <Icon icon="ion:search" />
+                </button>
+              </div>
+            </div>
+
             <div className="col-12 col-md-6 col-lg-2 d-flex align-items-end">
               <button 
                 className="btn btn-secondary w-100"
                 onClick={() => {
+                  if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+                    setSelectedState("");
+                  }
+                  setSelectedLga("");
+                  setSelectedProject("");
                   setSearchTerm("");
-                  setSelectedProject(""); // Reset project filter
                 }}
-                disabled={!searchTerm && !selectedProject}
+                disabled={
+                  (userRole === 'ADMIN' || userRole === 'National Coordinator') ? 
+                  (!selectedState && !selectedLga && !selectedProject && !searchTerm) :
+                  (!selectedLga && !selectedProject && !searchTerm)
+                }
               >
                 Reset Filters
               </button>
@@ -347,13 +557,14 @@ const Transactions = () => {
                     <tr>
                       <th scope="col">ID</th>
                       <th scope="col">Reference</th>
-                      <th scope="col">MSP</th>
+                      
                       <th scope="col">MSP Name</th>
                       <th scope="col">Farmer</th>
-                      <th scope="col">Type</th>
+                      <th scope="col">Hub</th>
+                      {/* <th scope="col">Type</th> */}
                       <th scope="col">Amount</th>
                       <th scope="col">Status</th>
-                      <th scope="col">Project</th> {/* New Project Column */}
+                      <th scope="col">Project</th>
                       <th scope="col">Date</th>
                       <th scope="col">Actions</th>
                     </tr>
@@ -364,29 +575,33 @@ const Transactions = () => {
                         <tr key={transaction.transactionId || index}>
                           <td>{(pagination.currentPage - 1) * pagination.perPage + index + 1}</td>
                           <td>{transaction.transactionReference}</td>
-                          <td>{transaction.msp}</td>
+                          
                           <td>
                             {transaction.msp_info?.users?.firstName} {transaction.msp_info?.users?.lastName}
                           </td>
                           <td>
                             {transaction.farmer_info?.farmerFirstName} {transaction.farmer_info?.farmerLastName}
                           </td>
-                          <td>{transaction.transactionType}</td>
-                          <td>{transaction.totalCost}</td>
+                          {/* <td>{transaction.transactionType}</td> */}
+                          <td>{transaction.hub_info?.lgas?.lgaName }</td>
+                          <td>₦{parseFloat(transaction.totalCost || 0).toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}</td>
                           <td>
                             <span
                               className={`px-3 py-1 rounded-full text-sm font-medium ${
                                 transaction.transactionStatus === "Paid"
                                   ? "bg-green text-green"
-                                  : transaction.transactionStatus === "pending"
+                                  : transaction.transactionStatus === "Pending"
                                   ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-gray-100 text-gray-700"
+                                  : "bg-red text-red"
                               }`}
                             >
                               {transaction.transactionStatus}
                             </span>
                           </td>
-                          <td>{transaction.projects?.projectName || 'N/A'}</td> {/* Display Project Name */}
+                          <td>{transaction.projects?.projectName || 'N/A'}</td>
                           <td>{formatDate(transaction.created_at)}</td>
                           <td>
                             <div className="d-flex">
@@ -403,7 +618,7 @@ const Transactions = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="11" className="text-center py-4"> {/* Updated colSpan for new column */}
+                        <td colSpan="11" className="text-center py-4">
                           No transactions found
                         </td>
                       </tr>
@@ -419,11 +634,7 @@ const Transactions = () => {
                     <select 
                       className="form-select form-select-sm w-auto" 
                       value={pagination.perPage}
-                      onChange={(e) => setPagination(prev => ({
-                        ...prev,
-                        perPage: parseInt(e.target.value),
-                        currentPage: 1
-                      }))}
+                      onChange={handlePerPageChange}
                     >
                       <option value="5">5</option>
                       <option value="10">10</option>
@@ -439,10 +650,7 @@ const Transactions = () => {
                         <li className={`page-item ${pagination.currentPage === 1 ? 'disabled' : ''}`}>
                           <button 
                             className="page-link" 
-                            onClick={() => setPagination(prev => ({
-                              ...prev,
-                              currentPage: Math.max(1, prev.currentPage - 1)
-                            }))}
+                            onClick={() => handlePageChange(pagination.currentPage - 1)}
                           >
                             Previous
                           </button>
@@ -467,10 +675,7 @@ const Transactions = () => {
                             >
                               <button 
                                 className="page-link" 
-                                onClick={() => setPagination(prev => ({
-                                  ...prev,
-                                  currentPage: pageNum
-                                }))}
+                                onClick={() => handlePageChange(pageNum)}
                               >
                                 {pageNum}
                               </button>
@@ -481,10 +686,7 @@ const Transactions = () => {
                         <li className={`page-item ${pagination.currentPage === pagination.totalPages ? 'disabled' : ''}`}>
                           <button 
                             className="page-link" 
-                            onClick={() => setPagination(prev => ({
-                              ...prev,
-                              currentPage: Math.min(pagination.totalPages, prev.currentPage + 1)
-                            }))}
+                            onClick={() => handlePageChange(pagination.currentPage + 1)}
                           >
                             Next
                           </button>
@@ -515,7 +717,30 @@ const Transactions = () => {
                 <button
                   type="button"
                   className="btn-close btn-close-white"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setFormData({
+                      msp: "",
+                      farmer: "",
+                      transactionType: "Service",
+                      totalCost: "",
+                      transactionStatus: "Paid",
+                      paymentMethod: "Cash",
+                      hub: "",
+                      transaction_commodity: [],
+                      projectId: ""
+                    });
+                    setSelectedFarmer(null);
+                    setSelectedServices([]);
+                    setSelectedCommodities([]);
+                    setError(null);
+                    if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+                      setModalSelectedState("");
+                      setModalSelectedLga("");
+                    } else if (userRole === 'State Coordinator') {
+                      setModalSelectedLga("");
+                    }
+                  }}
                   disabled={isSubmitting}
                 ></button>
               </div>
@@ -523,7 +748,7 @@ const Transactions = () => {
                 <form onSubmit={handleSubmit}>
                   <div className="row g-3 mb-4">
                     {/* Farmer Selection */}
-                    <div className="col-md-6">
+                    <div className="col-md-12">
                       <label className="form-label">Farmer</label>
                       <div className="input-group">
                         <input
@@ -545,7 +770,7 @@ const Transactions = () => {
                     </div>
                     
                     {/* MSP Name */}
-                    <div className="col-md-6">
+                    {/* <div className="col-md-6">
                       <label className="form-label">MSP Name</label>
                       <input
                         type="text"
@@ -557,7 +782,52 @@ const Transactions = () => {
                           ""}
                         readOnly
                       />
-                    </div>
+                    </div> */}
+                    
+                    {/* State Selection */}
+                    {(userRole === 'ADMIN' || userRole === 'National Coordinator') && (
+                      <div className="col-md-6">
+                        <label className="form-label">State</label>
+                        <select
+                          className="form-select"
+                          value={modalSelectedState}
+                          onChange={(e) => setModalSelectedState(e.target.value)}
+                          disabled={isSubmitting || loadingStates}
+                          required
+                        >
+                          <option value="">Select State</option>
+                          {states.map((state) => (
+                            <option key={state.id} value={state.id}>
+                              {state.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    
+                    {/* Hub Selection */}
+                    {(userRole === 'ADMIN' || userRole === 'National Coordinator' || userRole === 'State Coordinator') && (
+                      <div className="col-md-6">
+                        <label className="form-label">Hub</label>
+                        <select
+                          className="form-select"
+                          value={modalSelectedLga}
+                          onChange={(e) => {
+                            setModalSelectedLga(e.target.value);
+                            setFormData(prev => ({ ...prev, hub: e.target.value }));
+                          }}
+                          disabled={lgas.length === 0 || isSubmitting}
+                          required
+                        >
+                          <option value="">Select Hub</option>
+                          {lgas.map((lga) => (
+                            <option key={lga.id} value={lga.id}>
+                              {lga.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     
                     {/* Project Selection */}
                     <div className="col-md-6">
@@ -566,6 +836,7 @@ const Transactions = () => {
                         className="form-select"
                         value={formData.projectId}
                         onChange={(e) => setFormData({...formData, projectId: e.target.value})}
+                        disabled={isSubmitting || loadingProjects}
                         required
                       >
                         <option value="">Select a project...</option>
@@ -584,20 +855,22 @@ const Transactions = () => {
                         className="form-select"
                         value={formData.transactionType}
                         onChange={(e) => setFormData({...formData, transactionType: e.target.value})}
+                        disabled={isSubmitting}
                         required
                       >
-                        <option value="SERVICE">Service</option>
-                        <option value="PRODUCT">Product</option>
+                        <option value="Service">Service</option>
+                        <option value="Product">Product</option>
                       </select>
                     </div>
                     
                     {/* Status */}
-                    <div className="col-md-4">
+                    <div className="col-md-6">
                       <label className="form-label">Status</label>
                       <select
                         className="form-select"
                         value={formData.transactionStatus}
                         onChange={(e) => setFormData({...formData, transactionStatus: e.target.value})}
+                        disabled={isSubmitting}
                         required
                       >
                         <option value="Paid">Paid</option>
@@ -607,17 +880,18 @@ const Transactions = () => {
                     </div>
                     
                     {/* Payment Method */}
-                    <div className="col-md-4">
+                    <div className="col-md-6">
                       <label className="form-label">Payment Method</label>
                       <select
                         className="form-select"
                         value={formData.paymentMethod}
                         onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
+                        disabled={isSubmitting}
                         required
                       >
-                        <option value="CASH">Cash</option>
-                        <option value="TRANSFER">Transfer</option>
-                        <option value="CARD">Card</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Transfer">Transfer</option>
+                        <option value="Card">Card</option>
                       </select>
                     </div>
                   </div>
@@ -642,6 +916,7 @@ const Transactions = () => {
                             e.target.value = "";
                           }
                         }}
+                        disabled={isSubmitting}
                       >
                         <option value="">Select a service to add...</option>
                         {services.map(service => (
@@ -706,6 +981,7 @@ const Transactions = () => {
                                         totalCost: newTotal.toFixed(2)
                                       }));
                                     }}
+                                    disabled={isSubmitting}
                                   />
                                 </td>
                                 <td>₦{(service.totalCost || service.cost).toLocaleString()}</td>
@@ -714,6 +990,7 @@ const Transactions = () => {
                                     type="button"
                                     className="btn btn-sm btn-outline-danger"
                                     onClick={() => handleRemoveService(service.serviceId)}
+                                    disabled={isSubmitting}
                                   >
                                     Remove
                                   </button>
@@ -751,6 +1028,7 @@ const Transactions = () => {
                             e.target.value = "";
                           }
                         }}
+                        disabled={isSubmitting}
                       >
                         <option value="">Select commodities...</option>
                         {commodities.map(commodity => (
@@ -775,6 +1053,7 @@ const Transactions = () => {
                               className="ms-2 btn-close btn-close-primary"
                               onClick={() => handleRemoveCommodity(commodity.commodityId)}
                               style={{ fontSize: '0.5rem' }}
+                              disabled={isSubmitting}
                             />
                           </span>
                         ))}
@@ -790,7 +1069,30 @@ const Transactions = () => {
                     <button
                       type="button"
                       className="btn btn-secondary"
-                      onClick={() => setIsModalOpen(false)}
+                      onClick={() => {
+                        setIsModalOpen(false);
+                        setFormData({
+                          msp: "",
+                          farmer: "",
+                          transactionType: "Service",
+                          totalCost: "",
+                          transactionStatus: "Paid",
+                          paymentMethod: "Cash",
+                          hub: "",
+                          transaction_commodity: [],
+                          projectId: ""
+                        });
+                        setSelectedFarmer(null);
+                        setSelectedServices([]);
+                        setSelectedCommodities([]);
+                        setError(null);
+                        if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+                          setModalSelectedState("");
+                          setModalSelectedLga("");
+                        } else if (userRole === 'State Coordinator') {
+                          setModalSelectedLga("");
+                        }
+                      }}
                       disabled={isSubmitting}
                     >
                       Cancel
@@ -798,7 +1100,10 @@ const Transactions = () => {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={isSubmitting || !selectedFarmer || selectedServices.length === 0 || !formData.projectId}
+                      disabled={isSubmitting || !selectedFarmer || selectedServices.length === 0 || !formData.projectId ||
+                        (userRole === 'ADMIN' || userRole === 'National Coordinator') && (!modalSelectedState || !modalSelectedLga) ||
+                        (userRole === 'State Coordinator' && !modalSelectedLga) ||
+                        (userRole === 'Community Lead' && !userLgaId)}
                     >
                       {isSubmitting ? (
                         <>
@@ -864,7 +1169,7 @@ const Transactions = () => {
                           <th>ID</th>
                           <th>Name</th>
                           <th>Phone</th>
-                          <th>MSP</th>
+                          <th>Hub</th>
                           <th>Action</th>
                         </tr>
                       </thead>
@@ -874,7 +1179,7 @@ const Transactions = () => {
                             <td>{farmer.farmerId}</td>
                             <td>{farmer.farmerFirstName} {farmer.farmerLastName}</td>
                             <td>{farmer.phoneNumber}</td>
-                            <td>{farmer.msp}</td>
+                            <td>{farmer.hubs?.lgas?.lgaName}</td>
                             <td>
                               <button
                                 className="btn btn-sm btn-primary"
@@ -922,7 +1227,7 @@ const Transactions = () => {
                 ></button>
               </div>
               <div className="modal-body">
-                <div classNameigno="row">
+                <div className="row">
                   <div className="col-md-6">
                     <h6>Transaction Information</h6>
                     <div className="mb-3">
@@ -947,7 +1252,10 @@ const Transactions = () => {
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Total Cost</label>
-                      <p className="form-control-static">{selectedTransaction.totalCost}</p>
+                      <p className="form-control-static">₦{parseFloat(selectedTransaction.totalCost || 0).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}</p>
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Payment Method</label>
@@ -957,12 +1265,11 @@ const Transactions = () => {
                       <label className="form-label">Project</label>
                       <p className="form-control-static">{selectedTransaction.project_info?.projectName || 'N/A'}</p>
                     </div>
-                    <div className="mbunionfs mb-3">
+                    <div className="mb-3">
                       <label className="form-label">Date</label>
                       <p className="form-control-static">{formatDate(selectedTransaction.created_at)}</p>
                     </div>
                   </div>
-Alt text
                   <div className="col-md-6">
                     <h6>Farmer Information</h6>
                     <div className="mb-3">
@@ -990,8 +1297,8 @@ Alt text
                     
                     <h6 className="mt-4">MSP Information</h6>
                     <div className="mb-3">
-                      <label className="form-label">MSP ID</label>
-                      <p className="form-control-static">{selectedTransaction.msp}</p>
+                      <label className="form-label">Hub</label>
+                      <p className="form-control-static">{selectedTransaction.hubs?.lgas?.lgaName || `Hub #${selectedTransaction.hub}`}</p>
                     </div>
                     <div className="mb-3">
                       <label className="form-label">MSP Name</label>
@@ -1002,10 +1309,6 @@ Alt text
                     <div className="mb-3">
                       <label className="form-label">MSP Phone</label>
                       <p className="form-control-static">{selectedTransaction.msp_info?.users?.phoneNumber}</p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Hub</label>
-                      <p className="form-control-static">Hub #{selectedTransaction.hub}</p>
                     </div>
                   </div>
                 </div>

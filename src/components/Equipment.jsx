@@ -3,33 +3,33 @@ import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import api from "../../lib/api";
 
-const FarmersTable = () => {
+const EquipmentTable = () => {
   // State management
-  const [allFarmers, setAllFarmers] = useState([]);
-  const [displayedFarmers, setDisplayedFarmers] = useState([]);
+  const [allEquipment, setAllEquipment] = useState([]);
+  const [displayedEquipment, setDisplayedEquipment] = useState([]);
   const [states, setStates] = useState([]);
   const [lgas, setLgas] = useState([]);
-  const [projects, setProjects] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [owners, setOwners] = useState([]);
   const [selectedState, setSelectedState] = useState("");
   const [selectedLga, setSelectedLga] = useState("");
-  const [selectedProject, setSelectedProject] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingStates, setLoadingStates] = useState(false);
-  const [loadingFarmers, setLoadingFarmers] = useState(false);
-  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadingEquipment, setLoadingEquipment] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [loadingOwners, setLoadingOwners] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [otherNames, setOtherNames] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [alternatePhoneNumber, setAlternatePhoneNumber] = useState("");
-  const [gender, setGender] = useState("");
-  const [age, setAge] = useState("");
+  const [equipmentName, setEquipmentName] = useState("");
+  const [serialNumber, setSerialNumber] = useState("");
+  const [value, setValue] = useState("");
+  const [exactLocation, setExactLocation] = useState("");
+  const [status, setStatus] = useState("");
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [selectedFarmer, setSelectedFarmer] = useState(null);
+  const [selectedEquipment, setSelectedEquipment] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -40,10 +40,12 @@ const FarmersTable = () => {
   const [activeHubs, setActiveHubs] = useState([]);
   const [modalSelectedState, setModalSelectedState] = useState("");
   const [modalSelectedLga, setModalSelectedLga] = useState("");
-  const [modalSelectedProject, setModalSelectedProject] = useState("");
+  const [modalSelectedCategory, setModalSelectedCategory] = useState("");
+  const [modalSelectedOwner, setModalSelectedOwner] = useState("");
   const [editModalSelectedState, setEditModalSelectedState] = useState("");
   const [editModalSelectedLga, setEditModalSelectedLga] = useState("");
-  const [editModalSelectedProject, setEditModalSelectedProject] = useState("");
+  const [editModalSelectedCategory, setEditModalSelectedCategory] = useState("");
+  const [editModalSelectedOwner, setEditModalSelectedOwner] = useState("");
   const [userRole, setUserRole] = useState(null);
   const [userStateId, setUserStateId] = useState(null);
   const [userLgaId, setUserLgaId] = useState(null);
@@ -102,7 +104,7 @@ const FarmersTable = () => {
         setStates(Object.values(uniqueStates));
       } catch (error) {
         console.error("Error fetching active hubs:", error);
-        setError("Failed to load states. Please try again.");
+        setError("Failed to load hubs. Please try again.");
         setStates([]);
         setActiveHubs([]);
       } finally {
@@ -112,28 +114,52 @@ const FarmersTable = () => {
     fetchActiveHubs();
   }, []);
 
-  // Fetch projects data
+  // Fetch equipment categories data
+useEffect(() => {
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    setError(null);
+    try {
+      const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/equipment/categories`);
+      const data = response.data; // The API returns the array directly
+      const categoriesData = Array.isArray(data) ? data.map(category => ({
+        id: category.categoryId,
+        name: category.categoryName
+      })) : [];
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error("Error fetching equipment categories:", error);
+      setError("Failed to load equipment categories. Please try again.");
+      setCategories([]);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+  fetchCategories();
+}, []);
+
+  // Fetch owners data
   useEffect(() => {
-    const fetchProjects = async () => {
-      setLoadingProjects(true);
+    const fetchOwners = async () => {
+      setLoadingOwners(true);
       setError(null);
       try {
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/users`);
         const data = response.data || response;
-        const projectsData = Array.isArray(data.data) ? data.data.map(project => ({
-          id: project.projectId,
-          name: project.projectName
+        const ownersData = Array.isArray(data.data) ? data.data.map(user => ({
+          id: user.id,
+          name: user.name
         })) : [];
-        setProjects(projectsData);
+        setOwners(ownersData);
       } catch (error) {
-        console.error("Error fetching projects:", error);
-        setError("Failed to load projects. Please try again.");
-        setProjects([]);
+        console.error("Error fetching owners:", error);
+        setError("Failed to load owners. Please try again.");
+        setOwners([]);
       } finally {
-        setLoadingProjects(false);
+        setLoadingOwners(false);
       }
     };
-    fetchProjects();
+    fetchOwners();
   }, []);
 
   // Fetch LGAs based on selectedState
@@ -184,10 +210,10 @@ const FarmersTable = () => {
     setLgas(Object.values(uniqueLgas));
   }, [selectedState, modalSelectedState, editModalSelectedState, activeHubs, userRole]);
 
-  // Fetch Farmers with filtering and pagination
+  // Fetch Equipment with filtering and pagination
   useEffect(() => {
-    const fetchFarmers = async () => {
-      setLoadingFarmers(true);
+    const fetchEquipment = async () => {
+      setLoadingEquipment(true);
       try {
         const params = {
           page: pagination.currentPage,
@@ -203,52 +229,51 @@ const FarmersTable = () => {
           if (selectedLga && userRole === 'State Coordinator') params.lga = selectedLga;
           if (userLgaId && userRole === 'Community Lead') params.lga = userLgaId;
         }
-        if (selectedProject) params.projectId = selectedProject;
+        if (selectedCategory) params.equipmentCategory = selectedCategory;
         if (searchTerm) params.search = searchTerm;
 
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/farmers`, { params });
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/equipment`, { params });
         const data = response.data;
-        const farmersData = Array.isArray(data.data) ? data.data : [];
+        const equipmentData = Array.isArray(data.data) ? data.data : [];
 
-        setDisplayedFarmers(farmersData);
-        setAllFarmers(farmersData);
+        setDisplayedEquipment(equipmentData);
+        setAllEquipment(equipmentData);
         setPagination(prev => ({
           ...prev,
           totalPages: data.last_page || 1,
           total: data.total || 0,
         }));
       } catch (error) {
-        console.error("Error fetching Farmers:", error);
-        setError("Failed to load Farmers");
-        setAllFarmers([]);
-        setDisplayedFarmers([]);
+        console.error("Error fetching equipment:", error);
+        setError("Failed to load equipment");
+        setAllEquipment([]);
+        setDisplayedEquipment([]);
       } finally {
-        setLoadingFarmers(false);
+        setLoadingEquipment(false);
       }
     };
     if (userRole) {
-      fetchFarmers();
+      fetchEquipment();
     }
-  }, [pagination.currentPage, pagination.perPage, selectedState, selectedLga, selectedProject, searchTerm, userRole, userStateId, userLgaId]);
+  }, [pagination.currentPage, pagination.perPage, selectedState, selectedLga, selectedCategory, searchTerm, userRole, userStateId, userLgaId]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
-    if (selectedState || selectedLga || selectedProject || searchTerm) {
+    if (selectedState || selectedLga || selectedCategory || searchTerm) {
       setPagination(prev => ({ ...prev, currentPage: 1 }));
     }
-  }, [selectedState, selectedLga, selectedProject, searchTerm]);
+  }, [selectedState, selectedLga, selectedCategory, searchTerm]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setModalSelectedLga("");
-    setModalSelectedProject("");
-    setFirstName("");
-    setLastName("");
-    setOtherNames("");
-    setPhoneNumber("");
-    setAlternatePhoneNumber("");
-    setGender("");
-    setAge("");
+    setModalSelectedCategory("");
+    setModalSelectedOwner("");
+    setEquipmentName("");
+    setSerialNumber("");
+    setValue("");
+    setExactLocation("");
+    setStatus("");
     setError(null);
     if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
       setModalSelectedState("");
@@ -256,32 +281,31 @@ const FarmersTable = () => {
   };
 
   // View Modal Handler
-  const handleView = (farmer) => {
-    setSelectedFarmer(farmer);
+  const handleView = (equipment) => {
+    setSelectedEquipment(equipment);
     setViewModalOpen(true);
   };
 
   // Edit Modal Handler
-  const handleEdit = (farmer) => {
-    setSelectedFarmer(farmer);
-    setEditModalSelectedLga(farmer.subhubs?.hubId || userLgaId || "");
-    setEditModalSelectedProject(farmer.projectId || "");
-    setFirstName(farmer.farmerFirstName || "");
-    setLastName(farmer.farmerLastName || "");
-    setOtherNames(farmer.farmerOtherNames || "");
-    setPhoneNumber(farmer.phoneNumber || "");
-    setAlternatePhoneNumber(farmer.alternatePhoneNumber || "");
-    setGender(farmer.gender || "");
-    setAge(farmer.ageBracket || "");
+  const handleEdit = (equipment) => {
+    setSelectedEquipment(equipment);
+    setEditModalSelectedLga(equipment.hub || userLgaId || "");
+    setEditModalSelectedCategory(equipment.equipmentCategory || "");
+    setEditModalSelectedOwner(equipment.owner || "");
+    setEquipmentName(equipment.equipmentName || "");
+    setSerialNumber(equipment.serialNumber || "");
+    setValue(equipment.value || "");
+    setExactLocation(equipment.exact_location || "");
+    setStatus(equipment.status || "");
     if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
-      setEditModalSelectedState(farmer.msp?.hub || "");
+      setEditModalSelectedState(equipment.hubs?.state || "");
     }
     setEditModalOpen(true);
   };
 
   // Delete Modal Handler
-  const handleDelete = (farmer) => {
-    setSelectedFarmer(farmer);
+  const handleDelete = (equipment) => {
+    setSelectedEquipment(equipment);
     setDeleteModalOpen(true);
   };
 
@@ -289,70 +313,67 @@ const FarmersTable = () => {
   const confirmDelete = async () => {
     try {
       setIsSubmitting(true);
-      const response = await api.delete(`/farmers/${selectedFarmer.farmerId}`);
+      const response = await api.delete(`/equipment/${selectedEquipment.equipmentId}`);
       
       if (response.status >= 200 && response.status < 300) {
-        setAllFarmers(prev => prev.filter(f => f.farmerId !== selectedFarmer.farmerId));
-        setDisplayedFarmers(prev => prev.filter(f => f.farmerId !== selectedFarmer.farmerId));
+        setAllEquipment(prev => prev.filter(e => e.equipmentId !== selectedEquipment.equipmentId));
+        setDisplayedEquipment(prev => prev.filter(e => e.equipmentId !== selectedEquipment.equipmentId));
         setDeleteModalOpen(false);
       } else {
-        throw new Error(response.data?.message || 'Failed to delete Farmer');
+        throw new Error(response.data?.message || 'Failed to delete equipment');
       }
     } catch (error) {
-      setError(error.response?.data?.message || error.message || 'Failed to delete Farmer');
+      setError(error.response?.data?.message || error.message || 'Failed to delete equipment');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Update Farmer
+  // Update Equipment
   const handleUpdate = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    if (!firstName || !lastName || !phoneNumber) {
-      setError("Please fill in all required fields (First Name, Last Name, Phone Number)");
+    if (!equipmentName || !serialNumber) {
+      setError("Please fill in all required fields (Equipment Name, Serial Number)");
       setIsSubmitting(false);
       return;
     }
-    if (!/^\d+$/.test(age) || parseInt(age) <= 0) {
-      setError("Please enter a valid positive age");
+    if (!/^\d+(\.\d{1,2})?$/.test(value) || parseFloat(value) <= 0) {
+      setError("Please enter a valid positive value (e.g., 1000.00)");
       setIsSubmitting(false);
       return;
     }
 
     try {
       const payload = {
-        farmerFirstName: firstName,
-        farmerLastName: lastName,
-        farmerOtherNames: otherNames,
-        phoneNumber,
-        alternatePhoneNumber,
-        gender,
-        ageBracket: age,
-        projectId: editModalSelectedProject,
+        equipmentName,
+        serialNumber,
+        value: parseFloat(value),
+        equipmentCategory: editModalSelectedCategory,
+        owner: editModalSelectedOwner,
+        exact_location: exactLocation,
+        status,
       };
       
-      // Include hub and subHub based on role
+      // Include hub based on role
       if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
-        if (!editModalSelectedState || !editModalSelectedLga || !editModalSelectedProject) {
-          setError("Please select state, hub, and project");
+        if (!editModalSelectedState || !editModalSelectedLga || !editModalSelectedCategory) {
+          setError("Please select state, hub, and category");
           setIsSubmitting(false);
           return;
         }
-        payload.hub = editModalSelectedState;
-        payload.subHub = editModalSelectedLga;
+        payload.hub = editModalSelectedLga; // hub is lgaId
       } else if (userRole === 'State Coordinator') {
-        if (!editModalSelectedLga || !editModalSelectedProject) {
-          setError("Please select hub and project");
+        if (!editModalSelectedLga || !editModalSelectedCategory) {
+          setError("Please select hub and category");
           setIsSubmitting(false);
           return;
         }
-        payload.hub = userStateId;
-        payload.subHub = editModalSelectedLga;
+        payload.hub = editModalSelectedLga;
       } else if (userRole === 'Community Lead') {
-        if (!editModalSelectedProject) {
-          setError("Please select project");
+        if (!editModalSelectedCategory) {
+          setError("Please select category");
           setIsSubmitting(false);
           return;
         }
@@ -361,32 +382,31 @@ const FarmersTable = () => {
           setIsSubmitting(false);
           return;
         }
-        payload.hub = userStateId || null; // Allow null stateId
-        payload.subHub = userLgaId; // Use communityId as subHub
+        payload.hub = userLgaId; // Use communityId as hub
       }
       
-      const response = await api.put(`/farmers/${selectedFarmer.farmerId}`, payload);
+      const response = await api.put(`/equipment/${selectedEquipment.equipmentId}`, payload);
       
       if (response.status >= 200 && response.status < 300) {
         const stateObj = states.find(s => s.id.toString() === (editModalSelectedState || userStateId || "").toString());
         const lgaObj = lgas.find(l => l.id.toString() === (editModalSelectedLga || userLgaId).toString());
-        const projectObj = projects.find(p => p.id.toString() === editModalSelectedProject.toString());
+        const categoryObj = categories.find(c => c.id.toString() === editModalSelectedCategory.toString());
+        const ownerObj = owners.find(o => o.id.toString() === editModalSelectedOwner.toString());
         
-        const updatedFarmer = {
+        const updatedEquipment = {
           ...response.data,
-          farmerFirstName: firstName,
-          farmerLastName: lastName,
-          farmerOtherNames: otherNames,
-          phoneNumber,
-          alternatePhoneNumber,
-          gender,
-          ageBracket: age,
-          projectId: editModalSelectedProject,
-          project_info: {
-            projectName: projectObj?.name || 'N/A'
+          equipmentName,
+          serialNumber,
+          value: parseFloat(value),
+          equipmentCategory: editModalSelectedCategory,
+          owner: editModalSelectedOwner,
+          exact_location: exactLocation,
+          status,
+          category: {
+            categoryName: categoryObj?.name || 'N/A'
           },
           hubs: {
-            ...selectedFarmer.hubs,
+            ...selectedEquipment.hubs,
             state: editModalSelectedState || userStateId || null,
             lga: editModalSelectedLga || userLgaId,
             states: {
@@ -395,24 +415,27 @@ const FarmersTable = () => {
             lgas: {
               lgaName: lgaObj?.name || 'N/A'
             }
+          },
+          owners: {
+            name: ownerObj?.name || 'N/A'
           }
         };
         
-        setAllFarmers(prev => 
-          prev.map(f => f.farmerId === selectedFarmer.farmerId ? updatedFarmer : f)
+        setAllEquipment(prev => 
+          prev.map(e => e.equipmentId === selectedEquipment.equipmentId ? updatedEquipment : e)
         );
-        setDisplayedFarmers(prev => 
-          prev.map(f => f.farmerId === selectedFarmer.farmerId ? updatedFarmer : f)
+        setDisplayedEquipment(prev => 
+          prev.map(e => e.equipmentId === selectedEquipment.equipmentId ? updatedEquipment : e)
         );
         
         setEditModalOpen(false);
         setError(null);
       } else {
-        throw new Error(response.data?.message || 'Failed to update Farmer');
+        throw new Error(response.data?.message || 'Failed to update equipment');
       }
     } catch (error) {
       console.error("Update error:", error);
-      setError(error.response?.data?.message || error.message || 'Failed to update Farmer');
+      setError(error.response?.data?.message || error.message || 'Failed to update equipment');
     } finally {
       setIsSubmitting(false);
     }
@@ -423,28 +446,28 @@ const FarmersTable = () => {
     setIsSubmitting(true);
     
     // Validate required fields
-    if (!firstName || !lastName || !phoneNumber) {
-      setError("Please fill in all required fields (First Name, Last Name, Phone Number)");
+    if (!equipmentName || !serialNumber) {
+      setError("Please fill in all required fields (Equipment Name, Serial Number)");
       setIsSubmitting(false);
       return;
     }
-    if (!/^\d+$/.test(age) || parseInt(age) <= 0) {
-      setError("Please enter a valid positive age");
+    if (!/^\d+(\.\d{1,2})?$/.test(value) || parseFloat(value) <= 0) {
+      setError("Please enter a valid positive value (e.g., 1000.00)");
       setIsSubmitting(false);
       return;
     }
-    if ((userRole === 'ADMIN' || userRole === 'National Coordinator') && (!modalSelectedState || !modalSelectedLga || !modalSelectedProject)) {
-      setError("Please select state, hub, and project");
+    if ((userRole === 'ADMIN' || userRole === 'National Coordinator') && (!modalSelectedState || !modalSelectedLga || !modalSelectedCategory)) {
+      setError("Please select state, hub, and category");
       setIsSubmitting(false);
       return;
     }
-    if (userRole === 'State Coordinator' && (!modalSelectedLga || !modalSelectedProject)) {
-      setError("Please select hub and project");
+    if (userRole === 'State Coordinator' && (!modalSelectedLga || !modalSelectedCategory)) {
+      setError("Please select hub and category");
       setIsSubmitting(false);
       return;
     }
-    if (userRole === 'Community Lead' && !modalSelectedProject) {
-      setError("Please select project");
+    if (userRole === 'Community Lead' && !modalSelectedCategory) {
+      setError("Please select category");
       setIsSubmitting(false);
       return;
     }
@@ -456,43 +479,39 @@ const FarmersTable = () => {
 
     try {
       const payload = {
-        farmerFirstName: firstName,
-        farmerLastName: lastName,
-        farmerOtherNames: otherNames,
-        phoneNumber,
-        alternatePhoneNumber,
-        gender,
-        ageBracket: age,
-        projectId: modalSelectedProject,
+        equipmentName,
+        serialNumber,
+        value: parseFloat(value),
+        equipmentCategory: modalSelectedCategory,
+        owner: modalSelectedOwner,
+        exact_location: exactLocation,
+        status,
       };
       
-      // Include hub and subHub based on role
+      // Include hub based on role
       if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
-        payload.hub = modalSelectedState;
-        payload.subHub = modalSelectedLga;
+        payload.hub = modalSelectedLga;
       } else if (userRole === 'State Coordinator') {
-        payload.hub = userStateId;
-        payload.subHub = modalSelectedLga;
+        payload.hub = modalSelectedLga;
       } else if (userRole === 'Community Lead') {
-        payload.hub = userLgaId || null; // Allow null stateId
-        payload.subHub = userLgaId; // Use communityId as subHub
+        payload.hub = userLgaId;
       }
       
-      const response = await api.post('/farmers', payload);
+      const response = await api.post('/equipment', payload);
       
       if (response.status >= 200 && response.status < 300) {
-        const farmersResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/farmers`);
-        const newFarmers = Array.isArray(farmersResponse.data.data) ? farmersResponse.data.data : [];
+        const equipmentResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/equipment`);
+        const newEquipment = Array.isArray(equipmentResponse.data.data) ? equipmentResponse.data.data : [];
         
-        setAllFarmers(newFarmers);
-        setDisplayedFarmers(newFarmers);
+        setAllEquipment(newEquipment);
+        setDisplayedEquipment(newEquipment);
         handleCloseModal();
       } else {
-        throw new Error(response.data?.message || 'Failed to add farmer');
+        throw new Error(response.data?.message || 'Failed to add equipment');
       }
     } catch (error) {
       console.error("Submission error:", error);
-      setError(error.response?.data?.message || error.message || 'Failed to add farmer');
+      setError(error.response?.data?.message || error.message || 'Failed to add equipment');
     } finally {
       setIsSubmitting(false);
     }
@@ -513,17 +532,15 @@ const FarmersTable = () => {
     <div className="col-lg-12">
       <div className="card">
         <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-          <h5 className="card-title mb-3 mb-md-0">Farmers</h5>
-          {(userRole === 'Community Lead' &&
-
-          <button
-            className="btn btn-primary"
-            onClick={() => setIsModalOpen(true)}
-            disabled={loadingFarmers || (userRole === 'Community Lead' && !userLgaId)}
-          >
-            {/* {loadingFarmers ? 'Loading...' : 'Add Farmer'} */}
-            Add Farmer
-          </button>
+          <h5 className="card-title mb-3 mb-md-0">Equipment</h5>
+          {(userRole === 'Community Lead' || userRole === 'State Coordinator' || userRole === 'ADMIN' || userRole === 'National Coordinator') && (
+            <button
+              className="btn btn-primary"
+              onClick={() => setIsModalOpen(true)}
+              disabled={loadingEquipment || (userRole === 'Community Lead' && !userLgaId)}
+            >
+              Add Equipment
+            </button>
           )}
         </div>
         
@@ -552,7 +569,7 @@ const FarmersTable = () => {
 
             {(userRole === 'ADMIN' || userRole === 'National Coordinator' || userRole === 'State Coordinator') && (
               <div className="col-12 col-md-6 col-lg-3">
-                <label htmlFor="lgaFilter" className="form-label">Filter by Hubs</label>
+                <label htmlFor="lgaFilter" className="form-label">Filter by Hub</label>
                 <select
                   id="lgaFilter"
                   className="form-select"
@@ -571,31 +588,31 @@ const FarmersTable = () => {
             )}
 
             <div className="col-12 col-md-6 col-lg-3">
-              <label htmlFor="projectFilter" className="form-label">Filter by Project</label>
+              <label htmlFor="categoryFilter" className="form-label">Filter by Category</label>
               <select
-                id="projectFilter"
+                id="categoryFilter"
                 className="form-select"
-                value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
-                disabled={loadingProjects}
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                disabled={loadingCategories}
               >
-                <option value="">All Projects</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
+                <option value="">All Categories</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="col-12 col-md-6 col-lg-3">
-              <label htmlFor="searchFarmer" className="form-label">Search by Name or Phone</label>
+              <label htmlFor="searchEquipment" className="form-label">Search by Name or Serial</label>
               <div className="input-group">
                 <input
                   type="text"
-                  id="searchFarmer"
+                  id="searchEquipment"
                   className="form-control"
-                  placeholder="Enter name or phone..."
+                  placeholder="Enter name or serial..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -613,13 +630,13 @@ const FarmersTable = () => {
                     setSelectedState("");
                   }
                   setSelectedLga("");
-                  setSelectedProject("");
+                  setSelectedCategory("");
                   setSearchTerm("");
                 }}
                 disabled={
                   (userRole === 'ADMIN' || userRole === 'National Coordinator') ? 
-                  (!selectedState && !selectedLga && !selectedProject && !searchTerm) :
-                  (!selectedLga && !selectedProject && !searchTerm)
+                  (!selectedState && !selectedLga && !selectedCategory && !searchTerm) :
+                  (!selectedLga && !selectedCategory && !searchTerm)
                 }
               >
                 Reset Filters
@@ -627,11 +644,11 @@ const FarmersTable = () => {
             </div>
           </div>
           
-          {error && !loadingFarmers && (
+          {error && !loadingEquipment && (
             <div className="alert alert-danger">{error}</div>
           )}
           
-          {loadingFarmers ? (
+          {loadingEquipment ? (
             <div className="text-center py-4">
               <div className="spinner-border text-primary" role="status">
                 <span className="visually-hidden">Loading...</span>
@@ -644,63 +661,67 @@ const FarmersTable = () => {
                   <thead>
                     <tr>
                       <th scope="col">SN</th>
-                      <th scope="col">Farmer ID</th>
+                      <th scope="col">Equipment ID</th>
                       <th scope="col">Name</th>
-                      <th scope="col">Phone</th>
-                      <th scope="col">Gender</th>
-                      <th scope="col">Age</th>
+                      <th scope="col">Serial Number</th>
+                      <th scope="col">Value</th>
+                      <th scope="col">Category</th>
                       <th scope="col">Hub</th>
-                      <th scope="col">Project</th>
+                      <th scope="col">Owner</th>
+                      <th scope="col">Location</th>
+                      <th scope="col">Status</th>
                       <th scope="col">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {displayedFarmers.length > 0 ? (
-                      displayedFarmers.map((farmer, index) => (
-                        <tr key={farmer.farmerId || index}>
+                    {displayedEquipment.length > 0 ? (
+                      displayedEquipment.map((equipment, index) => (
+                        <tr key={equipment.equipmentId || index}>
                           <td>{(pagination.currentPage - 1) * pagination.perPage + index + 1}</td>
-                          <td>{farmer.farmerId || 'N/A'}</td>
-                          <td>{`${farmer.farmerFirstName || ''} ${farmer.farmerLastName || ''} ${farmer.farmerOtherNames || ''}`}</td>
-                          <td>{farmer.phoneNumber || 'N/A'}</td>
-                          <td>{farmer.gender || 'N/A'}</td>
-                          <td>{farmer.ageBracket || 'N/A'}</td>
-                          <td>{farmer.hubs?.lgas?.lgaName || 'N/A'}</td>
-                          <td>{farmer.projects?.projectName || 'N/A'}</td>
+                          <td>{equipment.equipmentId || 'N/A'}</td>
+                          <td>{equipment.equipmentName || 'N/A'}</td>
+                          <td>{equipment.serialNumber || 'N/A'}</td>
+                          <td>{equipment.value ? `₦${parseFloat(equipment.value).toFixed(2)}` : 'N/A'}</td>
+                          <td>{equipment.category?.categoryName || 'N/A'}</td>
+                          <td>{equipment.hub?.lgas?.lgaName || 'N/A'}</td>
+                          <td>{equipment.owner?.firstName || 'N/A'}</td>
+                          <td>{equipment.exact_location || 'N/A'}</td>
+                          <td>{equipment.status || 'N/A'}</td>
                           <td>
                             <div className="d-flex">
                               <button
                                 className="w-32-px h-32-px me-2 bg-primary-light text-primary-600 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                onClick={() => handleView(farmer)}
+                                onClick={() => handleView(equipment)}
                                 title="View"
                               >
                                 <Icon icon="iconamoon:eye-light" width={16} />
                               </button>
-                               {(userRole === 'National Coordinator') && 
-                               <>
-                              <button
-                                className="w-32-px h-32-px me-2 bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                onClick={() => handleEdit(farmer)}
-                                title="Edit"
-                              >
-                                <Icon icon="lucide:edit" width={16} />
-                              </button>
-                              <button
-                                className="w-32-px h-32-px bg-danger-light text-danger-600 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                onClick={() => handleDelete(farmer)}
-                                title="Delete"
-                              >
-                                <Icon icon="mingcute:delete-2-line" width={16} />
-                              </button>
-                              </>
-                              }
+                              {(userRole === 'National Coordinator' || userRole === 'ADMIN' ) && (
+                                <>
+                                  <button
+                                    className="w-32-px h-32-px me-2 bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                    onClick={() => handleEdit(equipment)}
+                                    title="Edit"
+                                  >
+                                    <Icon icon="lucide:edit" width={16} />
+                                  </button>
+                                  <button
+                                    className="w-32-px h-32-px bg-danger-light text-danger-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                    onClick={() => handleDelete(equipment)}
+                                    title="Delete"
+                                  >
+                                    <Icon icon="mingcute:delete-2-line" width={16} />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="9" className="text-center py-4">
-                          No Farmers found matching your criteria
+                        <td colSpan="11" className="text-center py-4">
+                          No equipment found matching your criteria
                         </td>
                       </tr>
                     )}
@@ -790,13 +811,13 @@ const FarmersTable = () => {
       </div>
 
       {/* Modals - Made responsive */}
-      {/* Add Farmer Modal */}
+      {/* Add Equipment Modal */}
       {isModalOpen && (
         <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Add New Farmer</h5>
+                <h5 className="modal-title">Add New Equipment</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -807,102 +828,100 @@ const FarmersTable = () => {
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
                   <div className="row">
-                    <div className="col-12 col-md-4 mb-3">
-                      <label htmlFor="firstName" className="form-label">First Name</label>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="equipmentName" className="form-label">Equipment Name</label>
                       <input
                         type="text"
-                        id="firstName"
+                        id="equipmentName"
                         className="form-control"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
+                        value={equipmentName}
+                        onChange={(e) => setEquipmentName(e.target.value)}
                         disabled={isSubmitting}
                         required
                       />
                     </div>
-                    <div className="col-12 col-md-4 mb-3">
-                      <label htmlFor="lastName" className="form-label">Last Name</label>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="serialNumber" className="form-label">Serial Number</label>
                       <input
                         type="text"
-                        id="lastName"
+                        id="serialNumber"
                         className="form-control"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
+                        value={serialNumber}
+                        onChange={(e) => setSerialNumber(e.target.value)}
                         disabled={isSubmitting}
                         required
-                      />
-                    </div>
-                    <div className="col-12 col-md-4 mb-3">
-                      <label htmlFor="otherNames" className="form-label">Other Names</label>
-                      <input
-                        type="text"
-                        id="otherNames"
-                        className="form-control"
-                        value={otherNames}
-                        onChange={(e) => setOtherNames(e.target.value)}
-                        disabled={isSubmitting}
                       />
                     </div>
                   </div>
                   
                   <div className="row">
                     <div className="col-12 col-md-6 mb-3">
-                      <label htmlFor="phoneNumber" className="form-label">Phone Number</label>
-                      <input
-                        type="tel"
-                        id="phoneNumber"
-                        className="form-control"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        disabled={isSubmitting}
-                        required
-                      />
-                    </div>
-                    <div className="col-12 col-md-6 mb-3">
-                      <label htmlFor="alternatePhoneNumber" className="form-label">Alternate Phone</label>
-                      <input
-                        type="tel"
-                        id="alternatePhoneNumber"
-                        className="form-control"
-                        value={alternatePhoneNumber}
-                        onChange={(e) => setAlternatePhoneNumber(e.target.value)}
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="row">
-                    <div className="col-12 col-md-6 mb-3">
-                      <label htmlFor="gender" className="form-label">Gender</label>
-                      <select
-                        id="gender"
-                        className="form-select"
-                        value={gender}
-                        onChange={(e) => setGender(e.target.value)}
-                        disabled={isSubmitting}
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        {/* <option value="Other">Other</option> */}
-                      </select>
-                    </div>
-                    <div className="col-12 col-md-6 mb-3">
-                      <label htmlFor="age" className="form-label">Age</label>
+                      <label htmlFor="value" className="form-label">Value (₦)</label>
                       <input
                         type="text"
-                        id="age"
+                        id="value"
                         className="form-control"
-                        value={age}
+                        value={value}
                         onChange={(e) => {
-                          const value = e.target.value;
-                          if (/^\d*$/.test(value)) {
-                            setAge(value);
+                          const val = e.target.value;
+                          if (/^\d*\.?\d{0,2}$/.test(val) || val === "") {
+                            setValue(val);
                           }
                         }}
                         disabled={isSubmitting}
-                        placeholder="Enter age (e.g., 30)"
-                        required
+                        placeholder="Enter value (e.g., 1000.00)"
                       />
+                    </div>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="exactLocation" className="form-label">Exact Location</label>
+                      <input
+                        type="text"
+                        id="exactLocation"
+                        className="form-control"
+                        value={exactLocation}
+                        onChange={(e) => setExactLocation(e.target.value)}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="row">
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="status" className="form-label">Status</label>
+                      <select
+                        id="status"
+                        className="form-select"
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        disabled={isSubmitting}
+                      >
+                        <option value="">Select Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="Under Maintenance">Under Maintenance</option>
+                      </select>
+                    </div>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="category" className="form-label">Category</label>
+                      {loadingCategories ? (
+                        <div className="text-muted">Loading categories...</div>
+                      ) : (
+                        <select
+                          id="category"
+                          className="form-select"
+                          value={modalSelectedCategory}
+                          onChange={(e) => setModalSelectedCategory(e.target.value)}
+                          disabled={isSubmitting}
+                          required
+                        >
+                          <option value="">Select Category</option>
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   </div>
                   
@@ -951,22 +970,21 @@ const FarmersTable = () => {
                     </div>
                   )}
                   <div className="mb-3">
-                    <label htmlFor="project" className="form-label">Project</label>
-                    {loadingProjects ? (
-                      <div className="text-muted">Loading projects...</div>
+                    <label htmlFor="owner" className="form-label">Owner</label>
+                    {loadingOwners ? (
+                      <div className="text-muted">Loading owners...</div>
                     ) : (
                       <select
-                        id="project"
+                        id="owner"
                         className="form-select"
-                        value={modalSelectedProject}
-                        onChange={(e) => setModalSelectedProject(e.target.value)}
+                        value={modalSelectedOwner}
+                        onChange={(e) => setModalSelectedOwner(e.target.value)}
                         disabled={isSubmitting}
-                        required
                       >
-                        <option value="">Select Project</option>
-                        {projects.map((project) => (
-                          <option key={project.id} value={project.id}>
-                            {project.name}
+                        <option value="">Select Owner</option>
+                        {owners.map((owner) => (
+                          <option key={owner.id} value={owner.id}>
+                            {owner.name}
                           </option>
                         ))}
                       </select>
@@ -990,14 +1008,13 @@ const FarmersTable = () => {
                       type="submit"
                       className="btn btn-primary"
                       disabled={
-                        !firstName ||
-                        !lastName ||
-                        !phoneNumber ||
-                        !/^\d+$/.test(age) ||
-                        parseInt(age) <= 0 ||
-                        (userRole === 'ADMIN' || userRole === 'National Coordinator') && (!modalSelectedState || !modalSelectedLga || !modalSelectedProject) ||
-                        (userRole === 'State Coordinator' && (!modalSelectedLga || !modalSelectedProject)) ||
-                        (userRole === 'Community Lead' && !modalSelectedProject) ||
+                        !equipmentName ||
+                        !serialNumber ||
+                        !/^\d+(\.\d{1,2})?$/.test(value) ||
+                        parseFloat(value) <= 0 ||
+                        (userRole === 'ADMIN' || userRole === 'National Coordinator') && (!modalSelectedState || !modalSelectedLga || !modalSelectedCategory) ||
+                        (userRole === 'State Coordinator' && (!modalSelectedLga || !modalSelectedCategory)) ||
+                        (userRole === 'Community Lead' && !modalSelectedCategory) ||
                         isSubmitting
                       }
                     >
@@ -1007,7 +1024,7 @@ const FarmersTable = () => {
                           Saving...
                         </>
                       ) : (
-                        'Save Farmer'
+                        'Save Equipment'
                       )}
                     </button>
                   </div>
@@ -1024,7 +1041,7 @@ const FarmersTable = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Farmer Details</h5>
+                <h5 className="modal-title">Equipment Details</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -1033,48 +1050,44 @@ const FarmersTable = () => {
               </div>
               <div className="modal-body">
                 <div className="mb-3">
-                  <label className="form-label">Full Name</label>
-                  <p className="form-control-static">{`${selectedFarmer?.farmerFirstName || ''} ${selectedFarmer?.farmerLastName || ''} ${selectedFarmer?.farmerOtherNames || ''}`}</p>
+                  <label className="form-label">Equipment Name</label>
+                  <p className="form-control-static">{selectedEquipment?.equipmentName || 'N/A'}</p>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Phone Number</label>
-                  <p className="form-control-static">{selectedFarmer?.phoneNumber || 'N/A'}</p>
+                  <label className="form-label">Serial Number</label>
+                  <p className="form-control-static">{selectedEquipment?.serialNumber || 'N/A'}</p>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Alternate Phone</label>
-                  <p className="form-control-static">{selectedFarmer?.alternatePhoneNumber || 'N/A'}</p>
+                  <label className="form-label">Value</label>
+                  <p className="form-control-static">{selectedEquipment?.value ? `₦${parseFloat(selectedEquipment.value).toFixed(2)}` : 'N/A'}</p>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Gender</label>
-                  <p className="form-control-static">{selectedFarmer?.gender || 'N/A'}</p>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Age</label>
-                  <p className="form-control-static">{selectedFarmer?.ageBracket || 'N/A'}</p>
+                  <label className="form-label">Category</label>
+                  <p className="form-control-static">{selectedEquipment?.category?.categoryName || 'N/A'}</p>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">State</label>
                   <p className="form-control-static">
-                    {states.find(s => s.id === selectedFarmer?.hubs?.state)?.name || 'N/A'}
+                    {states.find(s => s.id === selectedEquipment?.hubs?.state)?.name || 'N/A'}
                   </p>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Hub</label>
                   <p className="form-control-static">
-                    {lgas.find(l => l.id === selectedFarmer?.hubs?.lga)?.name || 'N/A'}
+                    {lgas.find(l => l.id === selectedEquipment?.hubs?.lga)?.name || 'N/A'}
                   </p>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Project</label>
-                  <p className="form-control-static">
-                    {selectedFarmer?.project_info?.projectName || 'N/A'}
-                  </p>
+                  <label className="form-label">Owner</label>
+                  <p className="form-control-static">{selectedEquipment?.owners?.name || 'N/A'}</p>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Exact Location</label>
+                  <p className="form-control-static">{selectedEquipment?.exact_location || 'N/A'}</p>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Status</label>
-                  <p className="form-control-static">
-                    {selectedFarmer?.status || 'N/A'}
-                  </p>
+                  <p className="form-control-static">{selectedEquipment?.status || 'N/A'}</p>
                 </div>
               </div>
               <div className="modal-footer">
@@ -1097,7 +1110,7 @@ const FarmersTable = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Edit Farmer</h5>
+                <h5 className="modal-title">Edit Equipment</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -1108,102 +1121,96 @@ const FarmersTable = () => {
               <div className="modal-body">
                 <form onSubmit={handleUpdate}>
                   <div className="row">
-                    <div className="col-12 col-md-4 mb-3">
-                      <label htmlFor="editFirstName" className="form-label">First Name</label>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="editEquipmentName" className="form-label">Equipment Name</label>
                       <input
                         type="text"
-                        id="editFirstName"
+                        id="editEquipmentName"
                         className="form-control"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
+                        value={equipmentName}
+                        onChange={(e) => setEquipmentName(e.target.value)}
                         disabled={isSubmitting}
                         required
                       />
                     </div>
-                    <div className="col-12 col-md-4 mb-3">
-                      <label htmlFor="editLastName" className="form-label">Last Name</label>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="editSerialNumber" className="form-label">Serial Number</label>
                       <input
                         type="text"
-                        id="editLastName"
+                        id="editSerialNumber"
                         className="form-control"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
+                        value={serialNumber}
+                        onChange={(e) => setSerialNumber(e.target.value)}
                         disabled={isSubmitting}
                         required
-                      />
-                    </div>
-                    <div className="col-12 col-md-4 mb-3">
-                      <label htmlFor="editOtherNames" className="form-label">Other Names</label>
-                      <input
-                        type="text"
-                        id="editOtherNames"
-                        className="form-control"
-                        value={otherNames}
-                        onChange={(e) => setOtherNames(e.target.value)}
-                        disabled={isSubmitting}
                       />
                     </div>
                   </div>
                   
                   <div className="row">
                     <div className="col-12 col-md-6 mb-3">
-                      <label htmlFor="editPhoneNumber" className="form-label">Phone Number</label>
-                      <input
-                        type="tel"
-                        id="editPhoneNumber"
-                        className="form-control"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        disabled={isSubmitting}
-                        required
-                      />
-                    </div>
-                    <div className="col-12 col-md-6 mb-3">
-                      <label htmlFor="editAlternatePhoneNumber" className="form-label">Alternate Phone</label>
-                      <input
-                        type="tel"
-                        id="editAlternatePhoneNumber"
-                        className="form-control"
-                        value={alternatePhoneNumber}
-                        onChange={(e) => setAlternatePhoneNumber(e.target.value)}
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="row">
-                    <div className="col-12 col-md-6 mb-3">
-                      <label htmlFor="editGender" className="form-label">Gender</label>
-                      <select
-                        id="editGender"
-                        className="form-select"
-                        value={gender}
-                        onChange={(e) => setGender(e.target.value)}
-                        disabled={isSubmitting}
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div className="col-12 col-md-6 mb-3">
-                      <label htmlFor="editAge" className="form-label">Age</label>
+                      <label htmlFor="editValue" className="form-label">Value (₦)</label>
                       <input
                         type="text"
-                        id="editAge"
+                        id="editValue"
                         className="form-control"
-                        value={age}
+                        value={value}
                         onChange={(e) => {
-                          const value = e.target.value;
-                          if (/^\d*$/.test(value)) {
-                            setAge(value);
+                          const val = e.target.value;
+                          if (/^\d*\.?\d{0,2}$/.test(val) || val === "") {
+                            setValue(val);
                           }
                         }}
                         disabled={isSubmitting}
-                        placeholder="Enter age (e.g., 30)"
-                        required
+                        placeholder="Enter value (e.g., 1000.00)"
                       />
+                    </div>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="editExactLocation" className="form-label">Exact Location</label>
+                      <input
+                        type="text"
+                        id="editExactLocation"
+                        className="form-control"
+                        value={exactLocation}
+                        onChange={(e) => setExactLocation(e.target.value)}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="row">
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="editStatus" className="form-label">Status</label>
+                      <select
+                        id="editStatus"
+                        className="form-select"
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        disabled={isSubmitting}
+                      >
+                        <option value="">Select Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="Under Maintenance">Under Maintenance</option>
+                      </select>
+                    </div>
+                    <div className="col-12 col-md-6 mb-3">
+                      <label htmlFor="editCategory" className="form-label">Category</label>
+                      <select
+                        id="editCategory"
+                        className="form-select"
+                        value={editModalSelectedCategory}
+                        onChange={(e) => setEditModalSelectedCategory(e.target.value)}
+                        disabled={isSubmitting}
+                        required
+                      >
+                        <option value="">Select Category</option>
+                        {categories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   
@@ -1248,19 +1255,18 @@ const FarmersTable = () => {
                     </div>
                   )}
                   <div className="mb-3">
-                    <label htmlFor="editProject" className="form-label">Project</label>
+                    <label htmlFor="editOwner" className="form-label">Owner</label>
                     <select
-                      id="editProject"
+                      id="editOwner"
                       className="form-select"
-                      value={editModalSelectedProject}
-                      onChange={(e) => setEditModalSelectedProject(e.target.value)}
+                      value={editModalSelectedOwner}
+                      onChange={(e) => setEditModalSelectedOwner(e.target.value)}
                       disabled={isSubmitting}
-                      required
                     >
-                      <option value="">Select Project</option>
-                      {projects.map((project) => (
-                        <option key={project.id} value={project.id}>
-                          {project.name}
+                      <option value="">Select Owner</option>
+                      {owners.map((owner) => (
+                        <option key={owner.id} value={owner.id}>
+                          {owner.name}
                         </option>
                       ))}
                     </select>
@@ -1283,14 +1289,13 @@ const FarmersTable = () => {
                       type="submit"
                       className="btn btn-primary"
                       disabled={
-                        !firstName ||
-                        !lastName ||
-                        !phoneNumber ||
-                        !/^\d+$/.test(age) ||
-                        parseInt(age) <= 0 ||
-                        (userRole === 'ADMIN' || userRole === 'National Coordinator') && (!editModalSelectedState || !editModalSelectedLga || !editModalSelectedProject) ||
-                        (userRole === 'State Coordinator' && (!editModalSelectedLga || !editModalSelectedProject)) ||
-                        (userRole === 'Community Lead' && !editModalSelectedProject) ||
+                        !equipmentName ||
+                        !serialNumber ||
+                        !/^\d+(\.\d{1,2})?$/.test(value) ||
+                        parseFloat(value) <= 0 ||
+                        (userRole === 'ADMIN' || userRole === 'National Coordinator') && (!editModalSelectedState || !editModalSelectedLga || !editModalSelectedCategory) ||
+                        (userRole === 'State Coordinator' && (!editModalSelectedLga || !editModalSelectedCategory)) ||
+                        (userRole === 'Community Lead' && !editModalSelectedCategory) ||
                         isSubmitting
                       }
                     >
@@ -1300,7 +1305,7 @@ const FarmersTable = () => {
                           Updating...
                         </>
                       ) : (
-                        'Update Farmer'
+                        'Update Equipment'
                       )}
                     </button>
                   </div>
@@ -1326,7 +1331,7 @@ const FarmersTable = () => {
                 ></button>
               </div>
               <div className="modal-body">
-                <p>Are you sure you want to delete the farmer <strong>{`${selectedFarmer?.farmerFirstName || ''} ${selectedFarmer?.farmerLastName || ''}`}</strong>?</p>
+                <p>Are you sure you want to delete the equipment <strong>{selectedEquipment?.equipmentName || ''}</strong>?</p>
                 <p className="text-danger">This action cannot be undone.</p>
                 
                 {error && (
@@ -1354,7 +1359,7 @@ const FarmersTable = () => {
                       Deleting...
                     </>
                   ) : (
-                    'Delete Farmer'
+                    'Delete Equipment'
                   )}
                 </button>
               </div>
@@ -1366,4 +1371,4 @@ const FarmersTable = () => {
   );
 };
 
-export default FarmersTable;
+export default EquipmentTable;

@@ -357,7 +357,7 @@ const MasterLayout = ({ children }) => {
           </Link>
         </li>
       ];
-    } else if (currentRole === 'National Coordinator' || currentRole === 'State Coordinator') {
+    } else if (currentRole === 'National Coordinator') {
       roleSpecificItems = [
         <li key="hubs">
           <Link href="/dashboard/active-locations">
@@ -386,6 +386,33 @@ const MasterLayout = ({ children }) => {
             <span>Farmers</span>
           </Link>
         </li>,
+        <li key="equipment">
+          <Link href="/dashboard/equipment">
+            <Icon
+              icon="fluent:vehicle-tractor-24-regular"
+              className="menu-icon"
+            />
+            <span>Equipment</span>
+          </Link>
+        </li>,
+        <li key="services">
+          <Link href="/dashboard/services">
+            <Icon
+              icon="vaadin:handshake"
+              className="menu-icon"
+            />
+            <span>Services</span>
+          </Link>
+        </li>,
+        <li key="transactions">
+          <Link href="/dashboard/transactions">
+            <Icon
+              icon="bitcoin-icons:transactions-filled"
+              className="menu-icon"
+            />
+            <span>Transactions</span>
+          </Link>
+        </li>,
         <li key="memberships">
           <Link href="/dashboard/memberships">
             <Icon
@@ -402,7 +429,83 @@ const MasterLayout = ({ children }) => {
           </Link>
         </li>
       ];
-    } else if (currentRole === 'Community Lead') {
+    } 
+    
+     else if (currentRole === 'State Coordinator') {
+      roleSpecificItems = [
+        <li key="hubs">
+          <Link href="/dashboard/active-locations">
+            <Icon
+              icon="solar:map-point-linear"
+              className="menu-icon"
+            />
+            <span>Hubs</span>
+          </Link>
+        </li>,
+        <li key="msps">
+          <Link href="/dashboard/msps">
+            <Icon
+              icon="solar:users-group-rounded-line-duotone"
+              className="menu-icon"
+            />
+            <span>MSPs</span>
+          </Link>
+        </li>,
+        <li key="farmers">
+          <Link href="/dashboard/farmers">
+            <Icon
+              icon="healthicons:agriculture-worker-outline"
+              className="menu-icon"
+            />
+            <span>Farmers</span>
+          </Link>
+        </li>,
+        <li key="equipment">
+          <Link href="/dashboard/equipment">
+            <Icon
+              icon="fluent:vehicle-tractor-24-regular"
+              className="menu-icon"
+            />
+            <span>Equipment</span>
+          </Link>
+        </li>,
+        <li key="services">
+          <Link href="/dashboard/services">
+            <Icon
+              icon="vaadin:handshake"
+              className="menu-icon"
+            />
+            <span>Services</span>
+          </Link>
+        </li>,
+        <li key="transactions">
+          <Link href="/dashboard/transactions">
+            <Icon
+              icon="bitcoin-icons:transactions-filled"
+              className="menu-icon"
+            />
+            <span>Transactions</span>
+          </Link>
+        </li>,
+        // <li key="memberships">
+        //   <Link href="/dashboard/memberships">
+        //     <Icon
+        //       icon="cil:badge"
+        //       className="menu-icon"
+        //     />
+        //     <span>Memberships</span>
+        //   </Link>
+        // </li>,
+        <li key="analytics">
+          <Link href="/dashboard/analytics">
+            <Icon icon="solar:pie-chart-outline" className="menu-icon" />
+            <span>Analytics</span>
+          </Link>
+        </li>
+      ];
+    }
+    
+    else if (currentRole === 'Community Lead') {
       roleSpecificItems = [
            <li key="msps">
           <Link href="/dashboard/msps">
@@ -422,6 +525,15 @@ const MasterLayout = ({ children }) => {
             <span>Farmers</span>
           </Link>
         </li>,
+        <li key="equipment">
+          <Link href="/dashboard/equipment">
+            <Icon
+              icon="fluent:vehicle-tractor-24-regular"
+              className="menu-icon"
+            />
+            <span>Equipment</span>
+          </Link>
+        </li>,
         <li key="services">
           <Link href="/dashboard/services">
             <Icon
@@ -429,6 +541,15 @@ const MasterLayout = ({ children }) => {
               className="menu-icon"
             />
             <span>Services</span>
+          </Link>
+        </li>,
+        <li key="transactions">
+          <Link href="/dashboard/transactions">
+            <Icon
+              icon="bitcoin-icons:transactions-filled"
+              className="menu-icon"
+            />
+            <span>Transactions</span>
           </Link>
         </li>,
       
@@ -588,7 +709,7 @@ const MasterLayout = ({ children }) => {
                           My Profile
                         </Link>
                       </li>
-                      <li>
+                      {/* <li>
                         <Link
                           className="dropdown-item text-black px-0 py-8 hover-bg-transparent hover-text-primary d-flex align-items-center gap-3"
                           href="/email"
@@ -611,7 +732,7 @@ const MasterLayout = ({ children }) => {
                           />
                           Setting
                         </Link>
-                      </li>
+                      </li> */}
                       <li>
                         <Link
                           className="dropdown-item text-black px-0 py-8 hover-bg-transparent hover-text-danger d-flex align-items-center gap-3"

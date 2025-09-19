@@ -38,6 +38,27 @@ const ActiveLocationsTable = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [loadingModalStates, setLoadingModalStates] = useState(false);
+  const [userRole, setUserRole] = useState("");
+  const [userStateId, setUserStateId] = useState(null);
+
+  // Fetch user role and stateId
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/user`);
+        setUserRole(response.data.role);
+        setUserStateId(response.data.stateId || null);
+        if (response.data.role === 'State Coordinator' && response.data.stateId) {
+          setFilterSelectedState(response.data.stateId);
+          setModalSelectedState(response.data.stateId);
+        }
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+        setError("Failed to load user profile");
+      }
+    };
+    fetchUserRole();
+  }, []);
 
   // Fetch locations with filtering and pagination
   useEffect(() => {
@@ -49,8 +70,12 @@ const ActiveLocationsTable = () => {
           per_page: pagination.perPage,
         };
 
-        // Add filter params if any filter is active
-        if (filterSelectedState) params.state = filterSelectedState;
+        // Add filter params based on role
+        if (userRole === 'State Coordinator' && userStateId) {
+          params.state = userStateId;
+        } else if (filterSelectedState) {
+          params.state = filterSelectedState;
+        }
         if (filterSelectedLga) params.lga = filterSelectedLga;
         if (filterSelectedSubHubs) params.hubId = filterSelectedSubHubs;
         if (searchTerm) params.search = searchTerm;
@@ -59,7 +84,7 @@ const ActiveLocationsTable = () => {
         const data = response.data;
         const locationsData = Array.isArray(data.data) ? data.data : [];
 
-        if (filterSelectedState || filterSelectedLga || filterSelectedSubHubs || searchTerm) {
+        if (filterSelectedState || filterSelectedLga || filterSelectedSubHubs || searchTerm || (userRole === 'State Coordinator' && userStateId)) {
           setDisplayedLocations(locationsData);
           setIsFiltered(true);
         } else {
@@ -82,15 +107,21 @@ const ActiveLocationsTable = () => {
         setLoadingLocations(false);
       }
     };
-    fetchLocations();
-  }, [pagination.currentPage, pagination.perPage, filterSelectedState, filterSelectedLga, filterSelectedSubHubs, searchTerm]);
+    if (userRole) {
+      fetchLocations();
+    }
+  }, [pagination.currentPage, pagination.perPage, filterSelectedState, filterSelectedLga, filterSelectedSubHubs, searchTerm, userRole, userStateId]);
 
   // Apply frontend filtering when we have all data and filters are active
   useEffect(() => {
-    if (!isFiltered && (filterSelectedState || filterSelectedLga || filterSelectedSubHubs || searchTerm)) {
+    if (!isFiltered && (filterSelectedState || filterSelectedLga || filterSelectedSubHubs || searchTerm || (userRole === 'State Coordinator' && userStateId))) {
       let filtered = [...allLocations];
 
-      if (filterSelectedState) {
+      if (userRole === 'State Coordinator' && userStateId) {
+        filtered = filtered.filter(location =>
+          location.state?.toString() === userStateId.toString()
+        );
+      } else if (filterSelectedState) {
         filtered = filtered.filter(location =>
           location.state?.toString() === filterSelectedState.toString()
         );
@@ -126,14 +157,14 @@ const ActiveLocationsTable = () => {
         total: filtered.length,
       }));
     }
-  }, [allLocations, filterSelectedState, filterSelectedLga, filterSelectedSubHubs, searchTerm, pagination.currentPage, pagination.perPage, isFiltered]);
+  }, [allLocations, filterSelectedState, filterSelectedLga, filterSelectedSubHubs, searchTerm, userRole, userStateId, pagination.currentPage, pagination.perPage, isFiltered]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
-    if (filterSelectedState || filterSelectedLga || filterSelectedSubHubs || searchTerm) {
+    if (filterSelectedState || filterSelectedLga || filterSelectedSubHubs || searchTerm || (userRole === 'State Coordinator' && userStateId)) {
       setPagination(prev => ({ ...prev, currentPage: 1 }));
     }
-  }, [filterSelectedState, filterSelectedLga, filterSelectedSubHubs, searchTerm]);
+  }, [filterSelectedState, filterSelectedLga, filterSelectedSubHubs, searchTerm, userRole, userStateId]);
 
   // Fetch states for filter section
   useEffect(() => {
@@ -143,14 +174,19 @@ const ActiveLocationsTable = () => {
       try {
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/active`);
         const data = response.data || response;
-        setFilterStates(
-          Array.isArray(data)
-            ? data.map((state) => ({
-                id: state.state_info?.stateId || state.id,
-                name: state.state_info?.stateName || state.name,
-              }))
-            : []
-        );
+        let states = Array.isArray(data)
+          ? data.map((state) => ({
+              id: state.state_info?.stateId || state.id,
+              name: state.state_info?.stateName || state.name,
+            }))
+          : [];
+        
+        // For State Coordinator, only show their state
+        if (userRole === 'State Coordinator' && userStateId) {
+          states = states.filter(state => state.id.toString() === userStateId.toString());
+        }
+        
+        setFilterStates(states);
       } catch (error) {
         console.error("Error fetching filter states:", error);
         setError("Failed to load states for filter. Please try again.");
@@ -159,13 +195,16 @@ const ActiveLocationsTable = () => {
         setLoadingFilterStates(false);
       }
     };
-    fetchFilterStates();
-  }, []);
+    if (userRole) {
+      fetchFilterStates();
+    }
+  }, [userRole, userStateId]);
 
   // Fetch LGAs for filter section when state is selected
   useEffect(() => {
     const fetchFilterLgas = async () => {
-      if (!filterSelectedState) {
+      const effectiveStateId = userRole === 'State Coordinator' ? userStateId : filterSelectedState;
+      if (!effectiveStateId) {
         setFilterLgas([]);
         setFilterSelectedLga("");
         setFilterSubHubs([]);
@@ -175,7 +214,7 @@ const ActiveLocationsTable = () => {
 
       try {
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/lgas`, {
-          params: { state: filterSelectedState }
+          params: { state: effectiveStateId }
         });
 
         const responseData = response.data || response;
@@ -200,8 +239,10 @@ const ActiveLocationsTable = () => {
         setFilterSelectedSubHubs("");
       }
     };
-    fetchFilterLgas();
-  }, [filterSelectedState]);
+    if (userRole) {
+      fetchFilterLgas();
+    }
+  }, [filterSelectedState, userRole, userStateId]);
 
   // Fetch Subhubs for filter section when LGA is selected
   useEffect(() => {
@@ -245,15 +286,22 @@ const ActiveLocationsTable = () => {
       setError(null);
       try {
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/states`);
-        const data = response.data || response;
-        setModalStates(
-          Array.isArray(data)
-            ? data.map((state) => ({
-                id: state.stateId || state.id,
-                name: state.stateName || state.name,
-              }))
-            : []
-        );
+        let states = Array.isArray(response.data)
+          ? response.data.map((state) => ({
+              id: state.stateId || state.id,
+              name: state.stateName || state.name,
+            }))
+          : [];
+        
+        // For State Coordinator, only show their state
+        if (userRole === 'State Coordinator' && userStateId) {
+          states = states.filter(state => state.id.toString() === userStateId.toString());
+          if (states.length > 0) {
+            setModalSelectedState(states[0].id);
+          }
+        }
+        
+        setModalStates(states);
       } catch (error) {
         console.error("Error fetching modal states:", error);
         setError("Failed to load states for modal. Please try again.");
@@ -262,13 +310,16 @@ const ActiveLocationsTable = () => {
         setLoadingModalStates(false);
       }
     };
-    fetchModalStates();
-  }, []);
+    if (userRole) {
+      fetchModalStates();
+    }
+  }, [userRole, userStateId]);
 
   // Fetch LGAs for modals when state is selected
   useEffect(() => {
     const fetchModalLgas = async () => {
-      if (!modalSelectedState) {
+      const effectiveStateId = userRole === 'State Coordinator' ? userStateId : modalSelectedState;
+      if (!effectiveStateId) {
         setModalLgas([]);
         setModalSelectedLga("");
         return;
@@ -276,7 +327,7 @@ const ActiveLocationsTable = () => {
 
       try {
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/lgas`, {
-          params: { state: modalSelectedState }
+          params: { state: effectiveStateId }
         });
 
         const responseData = response.data || response;
@@ -297,12 +348,16 @@ const ActiveLocationsTable = () => {
         setModalSelectedLga("");
       }
     };
-    fetchModalLgas();
-  }, [modalSelectedState]);
+    if (userRole) {
+      fetchModalLgas();
+    }
+  }, [modalSelectedState, userRole, userStateId]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setModalSelectedState("");
+    if (userRole !== 'State Coordinator') {
+      setModalSelectedState("");
+    }
     setModalSelectedLga("");
     setHubName("");
     setError(null);
@@ -317,7 +372,7 @@ const ActiveLocationsTable = () => {
   // Edit Modal Handler
   const handleEdit = (location) => {
     setSelectedLocation(location);
-    setModalSelectedState(location.state || "");
+    setModalSelectedState(userRole === 'State Coordinator' ? userStateId : location.state || "");
     setModalSelectedLga(location.lga || "");
     setHubName(location.hubName || "");
     setEditModalOpen(true);
@@ -353,6 +408,12 @@ const ActiveLocationsTable = () => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    if (!modalSelectedState || !modalSelectedLga) {
+      setError("Please select both state and LGA");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const payload = {
@@ -453,35 +514,40 @@ const ActiveLocationsTable = () => {
       <div className="card">
         <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
           <h5 className="card-title mb-3 mb-md-0">Active Locations</h5>
-          <button
-            className="btn btn-primary"
-            onClick={() => setIsModalOpen(true)}
-            disabled={loadingLocations}
-          >
-            {loadingLocations ? 'Loading...' : 'Add Hub'}
-          </button>
+          {(userRole === 'ADMIN' || userRole === 'State Coordinator') && (
+            <button
+              className="btn btn-primary"
+              onClick={() => setIsModalOpen(true)}
+              disabled={loadingLocations || (userRole === 'State Coordinator' && !userStateId)}
+            >
+              Add Hub
+            </button>
+          )}
         </div>
 
         <div className="card-body">
           {/* Filter and Search Section - Made responsive */}
           <div className="row mb-4 g-3">
-            <div className="col-12 col-md-6 col-lg-3">
-              <label htmlFor="stateFilter" className="form-label">Filter by State</label>
-              <select
-                id="stateFilter"
-                className="form-select"
-                value={filterSelectedState}
-                onChange={(e) => setFilterSelectedState(e.target.value)}
-                disabled={loadingFilterStates}
-              >
-                <option value="">All States</option>
-                {filterStates.map((state) => (
-                  <option key={state.id} value={state.id}>
-                    {state.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {(userRole === 'ADMIN' || userRole === 'National Coordinator') && (
+              <>
+              <div className="col-12 col-md-6 col-lg-3">
+                <label htmlFor="stateFilter" className="form-label">Filter by State</label>
+                <select
+                  id="stateFilter"
+                  className="form-select"
+                  value={filterSelectedState}
+                  onChange={(e) => setFilterSelectedState(e.target.value)}
+                  disabled={loadingFilterStates}
+                >
+                  <option value="">All States</option>
+                  {filterStates.map((state) => (
+                    <option key={state.id} value={state.id}>
+                      {state.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            
 
             <div className="col-12 col-md-6 col-lg-3">
               <label htmlFor="lgaFilter" className="form-label">Filter by LGA</label>
@@ -490,7 +556,7 @@ const ActiveLocationsTable = () => {
                 className="form-select"
                 value={filterSelectedLga}
                 onChange={(e) => setFilterSelectedLga(e.target.value)}
-                disabled={!filterSelectedState || filterLgas.length === 0}
+                disabled={(userRole === 'State Coordinator' ? !userStateId : !filterSelectedState) || filterLgas.length === 0}
               >
                 <option value="">All LGAs</option>
                 {filterLgas.map((lga) => (
@@ -518,6 +584,8 @@ const ActiveLocationsTable = () => {
                 ))}
               </select>
             </div>
+</>
+            )}
 
             <div className="col-12 col-md-6 col-lg-3">
               <label htmlFor="searchHub" className="form-label">Search by Hub Name</label>
@@ -540,12 +608,19 @@ const ActiveLocationsTable = () => {
               <button
                 className="btn btn-secondary w-100"
                 onClick={() => {
-                  setFilterSelectedState("");
+                  if (userRole !== 'State Coordinator') {
+                    setFilterSelectedState("");
+                  }
                   setFilterSelectedLga("");
                   setFilterSelectedSubHubs("");
                   setSearchTerm("");
                 }}
-                disabled={!filterSelectedState && !filterSelectedLga && !filterSelectedSubHubs && !searchTerm}
+                disabled={
+                  (userRole === 'State Coordinator' ? false : !filterSelectedState) &&
+                  !filterSelectedLga &&
+                  !filterSelectedSubHubs &&
+                  !searchTerm
+                }
               >
                 Reset Filters
               </button>
@@ -571,7 +646,6 @@ const ActiveLocationsTable = () => {
                       <th scope="col">ID</th>
                       <th scope="col">State</th>
                       <th scope="col">Hub</th>
-                      {/* <th scope="col">Subhubs</th> */}
                       <th scope="col">Actions</th>
                     </tr>
                   </thead>
@@ -582,7 +656,6 @@ const ActiveLocationsTable = () => {
                           <td>{(pagination.currentPage - 1) * pagination.perPage + index + 1}</td>
                           <td>{location.states?.stateName || 'N/A'}</td>
                           <td>{location.lgas?.lgaName || 'N/A'}</td>
-                          {/* <td><a href="#">View Subhubs</a></td> */}
                           <td>
                             <div className="d-flex">
                               <button
@@ -592,27 +665,31 @@ const ActiveLocationsTable = () => {
                               >
                                 <Icon icon="iconamoon:eye-light" width={16} />
                               </button>
-                              {/* <button
-                                className="w-32-px h-32-px me-2 bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                onClick={() => handleEdit(location)}
-                                title="Edit"
-                              >
-                                <Icon icon="lucide:edit" width={16} />
-                              </button> */}
-                              <button
-                                className="w-32-px h-32-px bg-danger-light text-danger-600 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                onClick={() => handleDelete(location)}
-                                title="Delete"
-                              >
-                                <Icon icon="mingcute:delete-2-line" width={16} />
-                              </button>
+                              {(userRole === 'ADMIN' || userRole === 'State Coordinator') && (
+                                <button
+                                  className="w-32-px h-32-px me-2 bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                  onClick={() => handleEdit(location)}
+                                  title="Edit"
+                                >
+                                  <Icon icon="lucide:edit" width={16} />
+                                </button>
+                              )}
+                              {userRole === 'ADMIN' && (
+                                <button
+                                  className="w-32-px h-32-px bg-danger-light text-danger-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                  onClick={() => handleDelete(location)}
+                                  title="Delete"
+                                >
+                                  <Icon icon="mingcute:delete-2-line" width={16} />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="5" className="text-center py-4">
+                        <td colSpan="4" className="text-center py-4">
                           No locations found matching your criteria
                         </td>
                       </tr>
@@ -719,28 +796,30 @@ const ActiveLocationsTable = () => {
               </div>
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
-                  <div className="mb-3">
-                    <label htmlFor="modalState" className="form-label">State</label>
-                    {loadingModalStates ? (
-                      <div className="text-muted">Loading states...</div>
-                    ) : (
-                      <select
-                        id="modalState"
-                        className="form-select"
-                        value={modalSelectedState}
-                        onChange={(e) => setModalSelectedState(e.target.value)}
-                        disabled={isSubmitting}
-                        required
-                      >
-                        <option value="">Select State</option>
-                        {modalStates.map((state) => (
-                          <option key={state.id} value={state.id}>
-                            {state.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
+                  {userRole !== 'State Coordinator' && (
+                    <div className="mb-3">
+                      <label htmlFor="modalState" className="form-label">State</label>
+                      {loadingModalStates ? (
+                        <div className="text-muted">Loading states...</div>
+                      ) : (
+                        <select
+                          id="modalState"
+                          className="form-select"
+                          value={modalSelectedState}
+                          onChange={(e) => setModalSelectedState(e.target.value)}
+                          disabled={isSubmitting}
+                          required
+                        >
+                          <option value="">Select State</option>
+                          {modalStates.map((state) => (
+                            <option key={state.id} value={state.id}>
+                              {state.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
                   <div className="mb-3">
                     <label htmlFor="modalLga" className="form-label">LGA</label>
                     <select
@@ -748,7 +827,7 @@ const ActiveLocationsTable = () => {
                       className="form-select"
                       value={modalSelectedLga}
                       onChange={(e) => setModalSelectedLga(e.target.value)}
-                      disabled={!modalSelectedState || modalLgas.length === 0 || isSubmitting}
+                      disabled={(userRole === 'State Coordinator' ? !userStateId : !modalSelectedState) || modalLgas.length === 0 || isSubmitting}
                       required
                     >
                       <option value="">Select LGA</option>
@@ -759,7 +838,6 @@ const ActiveLocationsTable = () => {
                       ))}
                     </select>
                   </div>
-{/* 
                   <div className="mb-3">
                     <label htmlFor="hubName" className="form-label">Hub Name</label>
                     <input
@@ -772,7 +850,7 @@ const ActiveLocationsTable = () => {
                       required
                       placeholder="Enter hub name"
                     />
-                  </div> */}
+                  </div>
 
                   {error && (
                     <div className="alert alert-danger">{error}</div>
@@ -790,7 +868,7 @@ const ActiveLocationsTable = () => {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={!modalSelectedState || !modalSelectedLga || isSubmitting}
+                      disabled={(userRole === 'State Coordinator' ? !userStateId : !modalSelectedState) || !modalSelectedLga || !hubName || isSubmitting}
                     >
                       {isSubmitting ? (
                         <>
@@ -878,24 +956,26 @@ const ActiveLocationsTable = () => {
                       required
                     />
                   </div>
-                  <div className="mb-3">
-                    <label htmlFor="editState" className="form-label">State</label>
-                    <select
-                      id="editState"
-                      className="form-select"
-                      value={modalSelectedState}
-                      onChange={(e) => setModalSelectedState(e.target.value)}
-                      disabled={isSubmitting || loadingModalStates}
-                      required
-                    >
-                      <option value="">Select State</option>
-                      {modalStates.map((state) => (
-                        <option key={state.id} value={state.id}>
-                          {state.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {userRole !== 'State Coordinator' && (
+                    <div className="mb-3">
+                      <label htmlFor="editState" className="form-label">State</label>
+                      <select
+                        id="editState"
+                        className="form-select"
+                        value={modalSelectedState}
+                        onChange={(e) => setModalSelectedState(e.target.value)}
+                        disabled={isSubmitting || loadingModalStates}
+                        required
+                      >
+                        <option value="">Select State</option>
+                        {modalStates.map((state) => (
+                          <option key={state.id} value={state.id}>
+                            {state.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div className="mb-3">
                     <label htmlFor="editLga" className="form-label">LGA</label>
                     <select
@@ -903,7 +983,7 @@ const ActiveLocationsTable = () => {
                       className="form-select"
                       value={modalSelectedLga}
                       onChange={(e) => setModalSelectedLga(e.target.value)}
-                      disabled={!modalSelectedState || modalLgas.length === 0 || isSubmitting}
+                      disabled={(userRole === 'State Coordinator' ? !userStateId : !modalSelectedState) || modalLgas.length === 0 || isSubmitting}
                       required
                     >
                       <option value="">Select LGA</option>
@@ -931,7 +1011,7 @@ const ActiveLocationsTable = () => {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={!modalSelectedState || !modalSelectedLga || isSubmitting}
+                      disabled={(userRole === 'State Coordinator' ? !userStateId : !modalSelectedState) || !modalSelectedLga || !hubName || isSubmitting}
                     >
                       {isSubmitting ? (
                         <>
