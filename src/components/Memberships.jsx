@@ -440,7 +440,7 @@ const MembershipsTable = () => {
                       <label className="form-label">Equipment Proof</label>
                       <div>
                         <a 
-                          href={`${process.env.NEXT_PUBLIC_API_URL}/storage/${selectedApplication.equipmentProof}`} 
+                          href={`${process.env.NEXT_PUBLIC_FILE_URL}/${selectedApplication.equipmentProof}`} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="btn btn-sm btn-outline-primary"
@@ -456,7 +456,7 @@ const MembershipsTable = () => {
                       <label className="form-label">Student Proof</label>
                       <div>
                         <a 
-                          href={`${process.env.NEXT_PUBLIC_API_URL}/storage/${selectedApplication.studentProof}`} 
+                          href={`${process.env.NEXT_PUBLIC_FILE_URL}/${selectedApplication.studentProof}`} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="btn btn-sm btn-outline-primary"
@@ -472,7 +472,7 @@ const MembershipsTable = () => {
                       <label className="form-label">Company Details</label>
                       <div>
                         <a 
-                          href={`${process.env.NEXT_PUBLIC_API_URL}/storage/${selectedApplication.companyDetails}`} 
+                          href={`${process.env.NEXT_PUBLIC_FILE_URL}/${selectedApplication.companyDetails}`} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="btn btn-sm btn-outline-primary"
@@ -488,12 +488,30 @@ const MembershipsTable = () => {
                       <label className="form-label">Skills Assessment</label>
                       <div>
                         <a 
-                          href={`${process.env.NEXT_PUBLIC_API_URL}/storage/${selectedApplication.skillsAssessment}`} 
+                          href={`${process.env.NEXT_PUBLIC_FILE_URL}/${selectedApplication.skillsAssessment}`} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="btn btn-sm btn-outline-primary"
                         >
                           View Document
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                
+
+
+                 {selectedApplication.meansOfIdentification && (
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Means of Identification</label>
+                      <div>
+                        <a 
+                          href={`${process.env.NEXT_PUBLIC_FILE_URL}/${selectedApplication.meansOfIdentification}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="btn btn-sm btn-outline-primary"
+                        >
+                          Means of Identification
                         </a>
                       </div>
                     </div>
