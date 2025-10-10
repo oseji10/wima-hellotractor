@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import api from "../../lib/api";
+import * as XLSX from "xlsx";
 
 const MembershipsTable = () => {
   // State management
@@ -98,6 +99,91 @@ const MembershipsTable = () => {
     }
   };
 
+  // Delete Application (only for rejected)
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this application? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await api.delete(`/membership-application/${id}`);
+      
+      if (response.status >= 200 && response.status < 300) {
+        // Remove from state
+        setApplications(prev => prev.filter(app => app.id !== id));
+        setDisplayedApplications(prev => prev.filter(app => app.id !== id));
+        // Update pagination if necessary
+        setPagination(prev => ({ ...prev, total: prev.total - 1 }));
+      } else {
+        throw new Error(response.data?.message || 'Failed to delete application');
+      }
+    } catch (error) {
+      setError(error.response?.data?.message || error.message || 'Failed to delete application');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Download Excel
+  const handleDownload = async () => {
+    try {
+      const params = {
+        page: 1,
+        per_page: pagination.total, // Fetch all based on current total (filtered)
+      };
+
+      // Add same filter params as current view
+      if (searchTerm) params.search = searchTerm;
+      if (statusFilter !== "all") params.status = statusFilter;
+      if (membershipTypeFilter !== "all") params.membership_type = membershipTypeFilter;
+
+      const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/membership-application`, { params });
+      const allApplications = response.data.data || [];
+
+      // Map to Excel data with all fields
+      const excelData = allApplications.map(app => ({
+        ID: app.id || 'N/A',
+        FullName: app.fullName || 'N/A',
+        Email: app.email || 'N/A',
+        PhoneNumber: app.phoneNumber || 'N/A',
+        Occupation: app.occupation || 'N/A',
+        DateOfBirth: app.dateOfBirth ? new Date(app.dateOfBirth).toLocaleDateString() : 'N/A',
+        Gender: app.gender || 'N/A',
+        MaritalStatus: app.maritalStatus || 'N/A',
+        Nationality: app.nationality || 'N/A',
+        MembershipType: app.membershipType || 'N/A',
+        Status: app.status || 'pending',
+        DateApplied: new Date(app.created_at).toLocaleString(),
+        LastUpdated: new Date(app.updated_at).toLocaleString(),
+        HomeAddress: app.homeAddress || 'N/A',
+        State: app.state || 'N/A',
+        LGA: app.lga || 'N/A',
+        WardDistrict: app.wardDistrict || 'N/A',
+        Community: app.community || 'N/A',
+        Organization: app.organization || 'N/A',
+        PositionTitle: app.positionTitle || 'N/A',
+        AreaOfExpertise: app.areaOfExpertise || 'N/A',
+        ReasonForJoining: app.reasonForJoining || 'N/A',
+        PreferredCommunication: app.preferredCommunication || 'N/A',
+        CompanyDetails: app.companyDetails || 'N/A',
+        CompanyMission: app.companyMission || 'N/A',
+        OperatorExperience: app.operatorExperience || 'N/A',
+        MeansOfIdentificationType: app.meansOfIdentificationType || 'N/A',
+        MeansOfIdentification: app.meansOfIdentification ? `${process.env.NEXT_PUBLIC_FILE_URL}/${app.meansOfIdentification}` : 'N/A',
+        CacDocument: app.cacDocument ? `${process.env.NEXT_PUBLIC_FILE_URL}/${app.cacDocument}` : 'N/A',
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Memberships");
+      XLSX.writeFile(wb, "membership_applications.xlsx");
+    } catch (error) {
+      console.error("Error downloading Excel:", error);
+      setError("Failed to download Excel file");
+    }
+  };
+
   const handlePageChange = (page) => {
     if (page >= 1 && page <= pagination.totalPages) {
       setPagination(prev => ({ ...prev, currentPage: page }));
@@ -127,6 +213,13 @@ const MembershipsTable = () => {
       <div className="card">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h5 className="card-title mb-0">Membership Applications</h5>
+          <button 
+            className="btn btn-primary"
+            onClick={handleDownload}
+            disabled={loadingApplications || pagination.total === 0}
+          >
+            Download Excel
+          </button>
         </div>
         
         <div className="card-body">
@@ -267,6 +360,16 @@ const MembershipsTable = () => {
                                     <Icon icon="mdi:close" width={16} />
                                   </button>
                                 </>
+                              )}
+                              {application.status === 'rejected' && (
+                                <button
+                                  className="w-32-px h-32-px me-2 bg-danger-light text-danger-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                  onClick={() => handleDelete(application.id)}
+                                  title="Delete"
+                                  disabled={isSubmitting}
+                                >
+                                  <Icon icon="mdi:trash" width={16} />
+                                </button>
                               )}
                             </div>
                           </td>
