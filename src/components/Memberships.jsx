@@ -158,8 +158,9 @@ const MembershipsTable = () => {
                 <option value="all">All Types</option>
                 <option value="Full Membership">Full Membership</option>
                 <option value="Associate Membership">Associate Membership</option>
-                <option value="Student Membership">Student Membership</option>
-                <option value="Corporate Membership">Corporate Membership</option>
+                <option value="Youth & Student Membership">Youth & Student Membership</option>
+                <option value="Operator Membership">Operator Membership</option>
+                <option value="Corporate/Institution Membership">Corporate/Institution Membership</option>
               </select>
             </div>
             
@@ -212,7 +213,7 @@ const MembershipsTable = () => {
                   <thead>
                     <tr>
                       <th scope="col">ID</th>
-                      <th scope="col">Name</th>
+                      <th scope="col">Full Name</th>
                       <th scope="col">Email</th>
                       <th scope="col">Phone</th>
                       <th scope="col">Membership Type</th>
@@ -228,7 +229,7 @@ const MembershipsTable = () => {
                           <td>
                             {(pagination.currentPage - 1) * pagination.perPage + index + 1}
                           </td>
-                          <td>{`${application.firstName || ''} ${application.lastName || ''}`}</td>
+                          <td>{application.fullName || 'N/A'}</td>
                           <td>{application.email || 'N/A'}</td>
                           <td>{application.phoneNumber || 'N/A'}</td>
                           <td>{application.membershipType || 'N/A'}</td>
@@ -381,7 +382,7 @@ const MembershipsTable = () => {
                   <div className="col-md-6">
                     <div className="mb-3">
                       <label className="form-label">Full Name</label>
-                      <p className="form-control-static">{`${selectedApplication.firstName || ''} ${selectedApplication.lastName || ''}`}</p>
+                      <p className="form-control-static">{selectedApplication.fullName || 'N/A'}</p>
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Email</label>
@@ -392,8 +393,26 @@ const MembershipsTable = () => {
                       <p className="form-control-static">{selectedApplication.phoneNumber || 'N/A'}</p>
                     </div>
                     <div className="mb-3">
-                      <label className="form-label">Profession</label>
-                      <p className="form-control-static">{selectedApplication.profession || 'N/A'}</p>
+                      <label className="form-label">Occupation</label>
+                      <p className="form-control-static">{selectedApplication.occupation || 'N/A'}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Date of Birth</label>
+                      <p className="form-control-static">
+                        {selectedApplication.dateOfBirth ? new Date(selectedApplication.dateOfBirth).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Gender</label>
+                      <p className="form-control-static">{selectedApplication.gender || 'N/A'}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Marital Status</label>
+                      <p className="form-control-static">{selectedApplication.maritalStatus || 'N/A'}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Nationality</label>
+                      <p className="form-control-static">{selectedApplication.nationality || 'N/A'}</p>
                     </div>
                   </div>
                   <div className="col-md-6">
@@ -417,15 +436,69 @@ const MembershipsTable = () => {
                         {new Date(selectedApplication.updated_at).toLocaleString()}
                       </p>
                     </div>
+                    <div className="mb-3">
+                      <label className="form-label">Home Address</label>
+                      <p className="form-control-static">{selectedApplication.homeAddress || 'N/A'}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">State</label>
+                      <p className="form-control-static">{selectedApplication.state || 'N/A'}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">LGA</label>
+                      <p className="form-control-static">{selectedApplication.lga || 'N/A'}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Ward/District</label>
+                      <p className="form-control-static">{selectedApplication.wardDistrict || 'N/A'}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Community</label>
+                      <p className="form-control-static">{selectedApplication.community || 'N/A'}</p>
+                    </div>
                   </div>
                 </div>
 
                 <div className="row">
                   <div className="col-12">
                     <div className="mb-3">
-                      <label className="form-label">Additional Message</label>
-                      <p className="form-control-static">{selectedApplication.message || 'N/A'}</p>
+                      <label className="form-label">Organization</label>
+                      <p className="form-control-static">{selectedApplication.organization || 'N/A'}</p>
                     </div>
+                    <div className="mb-3">
+                      <label className="form-label">Position/Title</label>
+                      <p className="form-control-static">{selectedApplication.positionTitle || 'N/A'}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Area of Expertise</label>
+                      <p className="form-control-static">{selectedApplication.areaOfExpertise || 'N/A'}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Reason for Joining</label>
+                      <p className="form-control-static">{selectedApplication.reasonForJoining || 'N/A'}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Preferred Communication</label>
+                      <p className="form-control-static">{selectedApplication.preferredCommunication || 'N/A'}</p>
+                    </div>
+                    {selectedApplication.membershipType === 'Corporate/Institution Membership' && (
+                      <>
+                        <div className="mb-3">
+                          <label className="form-label">Company Details</label>
+                          <p className="form-control-static">{selectedApplication.companyDetails || 'N/A'}</p>
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label">Company Mission</label>
+                          <p className="form-control-static">{selectedApplication.companyMission || 'N/A'}</p>
+                        </div>
+                      </>
+                    )}
+                    {selectedApplication.membershipType === 'Operator Membership' && (
+                      <div className="mb-3">
+                        <label className="form-label">Operator Experience</label>
+                        <p className="form-control-static">{selectedApplication.operatorExperience || 'N/A'}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -435,75 +508,9 @@ const MembershipsTable = () => {
                     <h6 className="mb-3">Supporting Documents</h6>
                   </div>
                   
-                  {selectedApplication.equipmentProof && (
+                  {selectedApplication.meansOfIdentification && (
                     <div className="col-md-6 mb-3">
-                      <label className="form-label">Equipment Proof</label>
-                      <div>
-                        <a 
-                          href={`${process.env.NEXT_PUBLIC_FILE_URL}/${selectedApplication.equipmentProof}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="btn btn-sm btn-outline-primary"
-                        >
-                          View Document
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {selectedApplication.studentProof && (
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label">Student Proof</label>
-                      <div>
-                        <a 
-                          href={`${process.env.NEXT_PUBLIC_FILE_URL}/${selectedApplication.studentProof}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="btn btn-sm btn-outline-primary"
-                        >
-                          View Document
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {selectedApplication.companyDetails && (
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label">Company Details</label>
-                      <div>
-                        <a 
-                          href={`${process.env.NEXT_PUBLIC_FILE_URL}/${selectedApplication.companyDetails}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="btn btn-sm btn-outline-primary"
-                        >
-                          View Document
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {selectedApplication.skillsAssessment && (
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label">Skills Assessment</label>
-                      <div>
-                        <a 
-                          href={`${process.env.NEXT_PUBLIC_FILE_URL}/${selectedApplication.skillsAssessment}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="btn btn-sm btn-outline-primary"
-                        >
-                          View Document
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                
-
-
-                 {selectedApplication.meansOfIdentification && (
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label">Means of Identification</label>
+                      <label className="form-label">Means of Identification ({selectedApplication.meansOfIdentificationType || 'N/A'})</label>
                       <div>
                         <a 
                           href={`${process.env.NEXT_PUBLIC_FILE_URL}/${selectedApplication.meansOfIdentification}`} 
@@ -511,7 +518,23 @@ const MembershipsTable = () => {
                           rel="noopener noreferrer"
                           className="btn btn-sm btn-outline-primary"
                         >
-                          Means of Identification
+                          View Document
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {selectedApplication.cacDocument && selectedApplication.membershipType === 'Corporate/Institution Membership' && (
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">CAC Document</label>
+                      <div>
+                        <a 
+                          href={`${process.env.NEXT_PUBLIC_FILE_URL}/${selectedApplication.cacDocument}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="btn btn-sm btn-outline-primary"
+                        >
+                          View Document
                         </a>
                       </div>
                     </div>
