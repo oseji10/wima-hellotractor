@@ -212,6 +212,15 @@ const MasterLayout = ({ children }) => {
             <span>MSPs</span>
           </Link>
         </li>,
+        <li key="agents">
+          <Link href="/dashboard/agents">
+            <Icon
+              icon="icon-park-outline:file-staff-one"
+              className="menu-icon"
+            />
+            <span>Agents</span>
+          </Link>
+        </li>,
         <li key="farmers">
           <Link href="/dashboard/farmers">
             <Icon
@@ -245,7 +254,7 @@ const MasterLayout = ({ children }) => {
               icon="bitcoin-icons:transactions-filled"
               className="menu-icon"
             />
-            <span>Transactions</span>
+            <span>Bookings</span>
           </Link>
         </li>,
         <li key="memberships">
@@ -303,7 +312,7 @@ const MasterLayout = ({ children }) => {
           </Link>
         </li>,
         <li key="analytics">
-          <Link href="/dashboard/analytics">
+          <Link href="https://dashboard.wimanigeria.org" target="_blank" rel="noopener noreferrer">
             <Icon icon="solar:pie-chart-outline" className="menu-icon" />
             <span>Analytics</span>
           </Link>
@@ -377,6 +386,15 @@ const MasterLayout = ({ children }) => {
             <span>MSPs</span>
           </Link>
         </li>,
+           <li key="agents">
+          <Link href="/dashboard/agents">
+            <Icon
+              icon="icon-park-outline:file-staff-one"
+              className="menu-icon"
+            />
+            <span>Agents</span>
+          </Link>
+        </li>,
         <li key="farmers">
           <Link href="/dashboard/farmers">
             <Icon
@@ -410,7 +428,7 @@ const MasterLayout = ({ children }) => {
               icon="bitcoin-icons:transactions-filled"
               className="menu-icon"
             />
-            <span>Transactions</span>
+            <span>Bookings</span>
           </Link>
         </li>,
         <li key="memberships">
@@ -423,7 +441,7 @@ const MasterLayout = ({ children }) => {
           </Link>
         </li>,
         <li key="analytics">
-          <Link href="/dashboard/analytics">
+          <Link href="https://dashboard.wimanigeria.org" target="_blank" rel="noopener noreferrer">
             <Icon icon="solar:pie-chart-outline" className="menu-icon" />
             <span>Analytics</span>
           </Link>
@@ -451,6 +469,15 @@ const MasterLayout = ({ children }) => {
             <span>MSPs</span>
           </Link>
         </li>,
+           <li key="agents">
+          <Link href="/dashboard/agents">
+            <Icon
+              icon="icon-park-outline:file-staff-one"
+              className="menu-icon"
+            />
+            <span>Agents</span>
+          </Link>
+        </li>,
         <li key="farmers">
           <Link href="/dashboard/farmers">
             <Icon
@@ -484,7 +511,7 @@ const MasterLayout = ({ children }) => {
               icon="bitcoin-icons:transactions-filled"
               className="menu-icon"
             />
-            <span>Transactions</span>
+            <span>Bookings</span>
           </Link>
         </li>,
         // <li key="memberships">
@@ -497,7 +524,7 @@ const MasterLayout = ({ children }) => {
         //   </Link>
         // </li>,
         <li key="analytics">
-          <Link href="/dashboard/analytics">
+          <Link href="https://dashboard.wimanigeria.org" target="_blank" rel="noopener noreferrer">
             <Icon icon="solar:pie-chart-outline" className="menu-icon" />
             <span>Analytics</span>
           </Link>
@@ -549,7 +576,7 @@ const MasterLayout = ({ children }) => {
               icon="bitcoin-icons:transactions-filled"
               className="menu-icon"
             />
-            <span>Transactions</span>
+            <span>Bookings</span>
           </Link>
         </li>,
       
