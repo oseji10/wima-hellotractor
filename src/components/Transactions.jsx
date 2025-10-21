@@ -612,7 +612,7 @@ const Transactions = () => {
       <div className="card">
         <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
           <h5 className="card-title mb-3 mb-md-0">Transactions</h5>
-          {(userRole === 'National Coordinator' || userRole === 'State Coordinator') && (
+          {(userRole === 'National Coordinator' || userRole === 'State Coordinator' || userRole === 'SUPER ADMIN' || userRole === 'ADMIN') && (
             <button
               className="btn btn-primary"
               onClick={() => setIsModalOpen(true)}

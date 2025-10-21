@@ -172,7 +172,7 @@ const MasterLayout = ({ children }) => {
     // Role-specific menu items
     let roleSpecificItems = [];
     
-    if (currentRole === 'ADMIN' || currentRole === 'SUPER ADMIN') {
+    if (currentRole === 'ADMIN' || currentRole === 'SUPER ADMIN' || currentRole === 'National Coordinator') {
       roleSpecificItems = [
         <li key="users">
           <Link href="/dashboard/users">
@@ -266,15 +266,15 @@ const MasterLayout = ({ children }) => {
             <span>Memberships</span>
           </Link>
         </li>,
-        <li key="investors">
-          <Link href="/dashboard/investors">
-            <Icon
-              icon="material-symbols-light:money-bag-outline"
-              className="menu-icon"
-            />
-            <span>Investors</span>
-          </Link>
-        </li>,
+        // <li key="investors">
+        //   <Link href="/dashboard/investors">
+        //     <Icon
+        //       icon="material-symbols-light:money-bag-outline"
+        //       className="menu-icon"
+        //     />
+        //     <span>Investors</span>
+        //   </Link>
+        // </li>,
         <li key="equipment">
           <Link href="/dashboard/equipment">
             <Icon
@@ -285,7 +285,7 @@ const MasterLayout = ({ children }) => {
           </Link>
         </li>,
         <li key="bookings">
-          <Link href="/dashboard/bookings">
+          <Link href="/dashboard/transactions">
             <Icon
               icon="majesticons:clock-line"
               className="menu-icon"
@@ -293,24 +293,24 @@ const MasterLayout = ({ children }) => {
             <span>Bookings</span>
           </Link>
         </li>,
-        <li key="payments">
-          <Link href="/dashboard/payments">
-            <Icon
-              icon="material-symbols-light:payments-outline"
-              className="menu-icon"
-            />
-            <span>Payments</span>
-          </Link>
-        </li>,
-        <li key="track-equipment">
-          <Link href="/dashboard/track-equipment">
-            <Icon
-              icon="carbon:storm-tracker"
-              className="menu-icon"
-            />
-            <span>Track Equipment</span>
-          </Link>
-        </li>,
+        // <li key="payments">
+        //   <Link href="/dashboard/payments">
+        //     <Icon
+        //       icon="material-symbols-light:payments-outline"
+        //       className="menu-icon"
+        //     />
+        //     <span>Payments</span>
+        //   </Link>
+        // </li>,
+        // <li key="track-equipment">
+        //   <Link href="/dashboard/track-equipment">
+        //     <Icon
+        //       icon="carbon:storm-tracker"
+        //       className="menu-icon"
+        //     />
+        //     <span>Track Equipment</span>
+        //   </Link>
+        // </li>,
         <li key="analytics">
           <Link href="https://dashboard.wimanigeria.org" target="_blank" rel="noopener noreferrer">
             <Icon icon="solar:pie-chart-outline" className="menu-icon" />
@@ -366,7 +366,8 @@ const MasterLayout = ({ children }) => {
           </Link>
         </li>
       ];
-    } else if (currentRole === 'National Coordinator') {
+    // } else if (currentRole === 'National Coordinator') {
+    } else if (currentRole === 'National Coordinator 2') {
       roleSpecificItems = [
         <li key="hubs">
           <Link href="/dashboard/active-locations">
