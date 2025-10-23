@@ -330,7 +330,7 @@ const UsersTable = () => {
         payload.communityId = editSelectedCommunity;
       }
 
-      const response = await api.put(`/users/${selectedUser.userId}`, payload);
+      const response = await api.put(`/users/${selectedUser.id}`, payload);
 
       if (response.status >= 200 && response.status < 300) {
         const updatedUser = {
