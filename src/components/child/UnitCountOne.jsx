@@ -91,7 +91,7 @@ const UnitCountOne = () => {
                     </div>
                 </div>
             </div>
-            <div className="col">
+            {/* <div className="col">
                 <div className="card shadow-none border bg-gradient-start-3 h-100">
                     <div className="card-body p-20">
                         <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -110,7 +110,7 @@ const UnitCountOne = () => {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> */}
             <div className="col">
                 <div className="card shadow-none border bg-gradient-start-4 h-100">
                     <div className="card-body p-20">
@@ -153,7 +153,10 @@ const UnitCountOne = () => {
                         <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
                             <div>
                                 <p className="fw-medium text-primary-light mb-1">Total Transactions</p>
-                                <h6 className="mb-0">{formatCurrency(getDisplayValue('totalTransactions', null))}</h6>
+                                <h6 className="mb-0">
+  {getDisplayValue('totalTransactions', 0)?.toLocaleString()}
+</h6>
+
                             </div>
                             <div className="w-50-px h-50-px bg-success-main rounded-circle d-flex justify-content-center align-items-center">
                                 <Icon

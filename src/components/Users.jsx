@@ -280,11 +280,11 @@ const UsersTable = () => {
   const confirmDelete = async () => {
     try {
       setIsSubmitting(true);
-      const response = await api.delete(`/users/${selectedUser.userId}`);
+      const response = await api.delete(`/users/${selectedUser.id}`);
 
       if (response.status >= 200 && response.status < 300) {
-        setAllUsers(prev => prev.filter(u => u.userId !== selectedUser.userId));
-        setDisplayedUsers(prev => prev.filter(u => u.userId !== selectedUser.userId));
+        setAllUsers(prev => prev.filter(u => u.id !== selectedUser.id));
+        setDisplayedUsers(prev => prev.filter(u => u.id !== selectedUser.id));
         setDeleteModalOpen(false);
       } else {
         throw new Error(response.data?.message || 'Failed to delete User');
@@ -348,10 +348,10 @@ const UsersTable = () => {
         };
 
         setAllUsers(prev =>
-          prev.map(u => u.userId === selectedUser.userId ? updatedUser : u)
+          prev.map(u => u.id === selectedUser.id ? updatedUser : u)
         );
         setDisplayedUsers(prev =>
-          prev.map(u => u.userId === selectedUser.userId ? updatedUser : u)
+          prev.map(u => u.id === selectedUser.id ? updatedUser : u)
         );
 
         setEditModalOpen(false);

@@ -312,7 +312,7 @@ const MasterLayout = ({ children }) => {
         //   </Link>
         // </li>,
         <li key="analytics">
-          <Link href="https://dashboard.wimanigeria.org" target="_blank" rel="noopener noreferrer">
+          <Link href="https://dashboard.wimanigeria.com" target="_blank" rel="noopener noreferrer">
             <Icon icon="solar:pie-chart-outline" className="menu-icon" />
             <span>Analytics</span>
           </Link>
@@ -442,7 +442,7 @@ const MasterLayout = ({ children }) => {
           </Link>
         </li>,
         <li key="analytics">
-          <Link href="https://dashboard.wimanigeria.org" target="_blank" rel="noopener noreferrer">
+          <Link href="https://dashboard.wimanigeria.com" target="_blank" rel="noopener noreferrer">
             <Icon icon="solar:pie-chart-outline" className="menu-icon" />
             <span>Analytics</span>
           </Link>
@@ -525,7 +525,7 @@ const MasterLayout = ({ children }) => {
         //   </Link>
         // </li>,
         <li key="analytics">
-          <Link href="https://dashboard.wimanigeria.org" target="_blank" rel="noopener noreferrer">
+          <Link href="https://dashboard.wimanigeria.com" target="_blank" rel="noopener noreferrer">
             <Icon icon="solar:pie-chart-outline" className="menu-icon" />
             <span>Analytics</span>
           </Link>
