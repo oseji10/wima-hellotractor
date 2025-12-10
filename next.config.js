@@ -36,8 +36,18 @@ const nextConfig = {
   typescript: {
       ignoreBuildErrors: true, 
     },
-    images: { unoptimized: true }, 
+    // images: { unoptimized: true }, 
 
+    images: {
+      unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "https://backend.idriva.ng",
+        pathname: "/public/**",
+      },
+    ],
+  },
 // swcMinify: false,
 };
 

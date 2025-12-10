@@ -1,24 +1,16 @@
 "use client";
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import api from "../../lib/api";
-import { v4 as uuidv4 } from 'uuid';
 
 const Transactions = () => {
-  // State management
+  // Main state management
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isCreatingFarmer, setIsCreatingFarmer] = useState(false);
-  const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [confirmTransactionId, setConfirmTransactionId] = useState(null);
-  const [isConfirming, setIsConfirming] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(""); // New state for payment method
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [selectedLga, setSelectedLga] = useState("");
@@ -29,63 +21,52 @@ const Transactions = () => {
     perPage: 10,
     total: 0,
   });
-  const [isFarmerSearchOpen, setIsFarmerSearchOpen] = useState(false);
-  const [farmerSearchTerm, setFarmerSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectedFarmer, setSelectedFarmer] = useState(null);
-  const [services, setServices] = useState([]);
-  const [selectedServices, setSelectedServices] = useState([]);
-  const [commodities, setCommodities] = useState([]);
-  const [selectedCommodities, setSelectedCommodities] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
+  
   const [states, setStates] = useState([]);
   const [lgas, setLgas] = useState([]);
   const [activeHubs, setActiveHubs] = useState([]);
-  const [loadingStates, setLoadingStates] = useState(false);
-  const [modalSelectedState, setModalSelectedState] = useState("");
-  const [modalSelectedLga, setModalSelectedLga] = useState("");
-  const [modalSelectedProject, setModalSelectedProject] = useState("");
+  const [projects, setProjects] = useState([]);
+  const [services, setServices] = useState([]);
+  const [equipment, setEquipment] = useState([]);
   const [userRole, setUserRole] = useState(null);
   const [userStateId, setUserStateId] = useState(null);
-  const [userLgaId, setUserLgaId] = useState(null);
-  const [equipment, setEquipment] = useState([]);
-  const [newFarmerData, setNewFarmerData] = useState({
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    farmer: "",
+    farmerId: "",
+    phoneNumber: "",
     farmerFirstName: "",
     farmerLastName: "",
-    phoneNumber: "",
-    gender: "",
-    ageBracket: "",
+    projectId: "",
+    hub: "",
+    services: []
   });
-
   
-  // Predefined payment methods (replace with API call if available)
+  const [modalSelectedState, setModalSelectedState] = useState("");
+  const [modalSelectedLga, setModalSelectedLga] = useState("");
+  const [selectedFarmer, setSelectedFarmer] = useState(null);
+  const [isSearchingFarmer, setIsSearchingFarmer] = useState(false);
+  const [farmerSearchTerm, setFarmerSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isCreatingFarmer, setIsCreatingFarmer] = useState(false);
+
+  // View and Confirm Modal States
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [confirmTransactionId, setConfirmTransactionId] = useState(null);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
+
+  // Payment methods
   const paymentMethods = [
     { id: "cash", name: "Cash" },
     { id: "bank_transfer", name: "Bank Transfer" },
     { id: "mobile_money", name: "Mobile Money" },
   ];
 
-  // Form state
-  const [formData, setFormData] = useState({
-    msp: "",
-    farmer: "",
-    transactionType: "Service",
-    totalCost: "",
-    hub: "",
-    transaction_commodity: [],
-    projectId: "",
-    equipment: []
-  });
-
-  // Status colors mapping
-  const statusColors = {
-    Paid: "bg-green text-green dark:text-green dark:bg-green",
-    Pending: "bg-yellow text-yellow",
-    Failed: "bg-red text-red",
-  };
-
-  // Fetch user role, stateId, and lgaId
+  // Fetch user role
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
@@ -93,26 +74,19 @@ const Transactions = () => {
         setUserRole(response.data.role);
         if (response.data.role === 'State Coordinator') {
           setUserStateId(response.data.stateId || null);
-          setUserLgaId(response.data.communityId || null);
           setSelectedState(response.data.stateId || "");
           setModalSelectedState(response.data.stateId || "");
-          if (response.data.communityId) {
-            setModalSelectedLga(response.data.communityId);
-          }
         }
       } catch (error) {
         console.error("Error fetching user role:", error);
-        setError("Failed to load user profile");
       }
     };
     fetchUserRole();
   }, []);
 
-  // Fetch active hubs data
+  // Fetch active hubs and states
   useEffect(() => {
     const fetchActiveHubs = async () => {
-      setLoadingStates(true);
-      setError(null);
       try {
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/hubs/all-active-hubs`);
         const data = response.data || response;
@@ -121,7 +95,7 @@ const Transactions = () => {
         
         const uniqueStates = {};
         hubs.forEach(hub => {
-          if (hub.state_info && hub.state_info.stateId && hub.state_info.stateName) {
+          if (hub.state_info?.stateId && hub.state_info?.stateName) {
             uniqueStates[hub.state_info.stateId] = {
               id: hub.state_info.stateId,
               name: hub.state_info.stateName
@@ -131,45 +105,31 @@ const Transactions = () => {
         setStates(Object.values(uniqueStates));
       } catch (error) {
         console.error("Error fetching active hubs:", error);
-        setError("Failed to load hubs. Please try again.");
-        setStates([]);
-        setActiveHubs([]);
-      } finally {
-        setLoadingStates(false);
+        setError("Failed to load hubs.");
       }
     };
     fetchActiveHubs();
   }, []);
 
-  // Fetch LGAs based on selectedState
+  // Filter LGAs based on selected state
   useEffect(() => {
     if (!selectedState && !modalSelectedState) {
       setLgas([]);
       setSelectedLga("");
-      if (userRole !== 'State Coordinator') {
-        setModalSelectedLga("");
-      }
+      setModalSelectedLga("");
       return;
     }
 
     const effectiveStateId = selectedState || modalSelectedState;
-    if (!effectiveStateId) {
-      setLgas([]);
-      setSelectedLga("");
-      if (userRole !== 'State Coordinator') {
-        setModalSelectedLga("");
-      }
-      return;
-    }
+    if (!effectiveStateId) return;
 
     const stateHubs = activeHubs.filter(hub => 
-      hub.state_info && hub.state_info.stateId && 
-      hub.state_info.stateId.toString() === effectiveStateId.toString()
+      hub.state_info?.stateId?.toString() === effectiveStateId.toString()
     );
     
     const uniqueLgas = {};
     stateHubs.forEach(hub => {
-      if (hub.lga_info && hub.lga_info.lgaId && hub.lga_info.lgaName) {
+      if (hub.lga_info?.lgaId && hub.lga_info?.lgaName) {
         uniqueLgas[hub.lga_info.lgaId] = {
           id: hub.lga_info.lgaId,
           name: hub.lga_info.lgaName
@@ -177,41 +137,9 @@ const Transactions = () => {
       }
     });
     setLgas(Object.values(uniqueLgas));
-  }, [selectedState, modalSelectedState, activeHubs, userRole]);
+  }, [selectedState, modalSelectedState, activeHubs]);
 
-  // Fetch equipment based on selected hub and service
-  useEffect(() => {
-    const fetchEquipment = async () => {
-      if (!modalSelectedLga || selectedServices.length === 0) {
-        setEquipment([]);
-        setError("Please select a hub and at least one service to load equipment.");
-        return;
-      }
-      try {
-        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/equipment/search`, {
-          params: {
-            hubId: modalSelectedLga,
-            serviceIds: selectedServices.map(s => s.serviceId).join(',')
-          }
-        });
-        const equipmentData = response.data || [];
-        console.log("Equipment API response:", equipmentData);
-        setEquipment(equipmentData);
-        if (equipmentData.length === 0) {
-          setError("No equipment available for the selected hub and services.");
-        } else {
-          setError(null);
-        }
-      } catch (error) {
-        console.error("Error fetching equipment:", error);
-        setEquipment([]);
-        setError("Failed to load equipment. Please try again.");
-      }
-    };
-    fetchEquipment();
-  }, [modalSelectedLga, selectedServices]);
-
-  // Fetch transactions with state and hub filters
+  // Fetch transactions
   useEffect(() => {
     const fetchTransactions = async () => {
       setLoading(true);
@@ -247,7 +175,6 @@ const Transactions = () => {
       } catch (error) {
         console.error("Error fetching transactions:", error);
         setError("Failed to load transactions");
-        setTransactions([]);
       } finally {
         setLoading(false);
       }
@@ -258,11 +185,9 @@ const Transactions = () => {
     }
   }, [pagination.currentPage, pagination.perPage, searchTerm, selectedProject, selectedState, selectedLga, userRole, userStateId]);
 
-  // Fetch projects data
+  // Fetch projects
   useEffect(() => {
     const fetchProjects = async () => {
-      setLoadingProjects(true);
-      setError(null);
       try {
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/projects`);
         const data = response.data || response;
@@ -273,115 +198,65 @@ const Transactions = () => {
         setProjects(projectsData);
       } catch (error) {
         console.error("Error fetching projects:", error);
-        setError("Failed to load projects. Please try again.");
         setProjects([]);
-      } finally {
-        setLoadingProjects(false);
       }
     };
     fetchProjects();
   }, []);
 
-  // Fetch services and commodities
+  // Load services when hub is selected
   useEffect(() => {
-    const fetchServicesAndCommodities = async () => {
+    if (!modalSelectedLga) {
+      setServices([]);
+      return;
+    }
+    
+    const loadServices = async () => {
       try {
-        const servicesResponse = await api.get('/services');
-        setServices(servicesResponse.data.data || []);
-        
-        const commoditiesResponse = await api.get('/commodities');
-        setCommodities(commoditiesResponse.data.data || []);
+        const response = await api.post(`${process.env.NEXT_PUBLIC_API_URL}/load-services2`, { 
+          hubId: modalSelectedLga,
+          stateId: modalSelectedState, 
+        });
+        setServices(response.data || []);
       } catch (error) {
-        console.error("Error fetching services or commodities:", error);
+        console.error("Error loading services:", error);
+        setServices([]);
       }
     };
+    loadServices();
+  }, [modalSelectedLga, modalSelectedState]);
+
+  // Load equipment when service is selected
+  const loadEquipmentForService = async (serviceId, serviceCategoryId) => {
+    if (!modalSelectedLga || !serviceId) return [];
     
-    fetchServicesAndCommodities();
-  }, []);
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    if (selectedState || selectedLga || selectedProject || searchTerm) {
-      setPagination(prev => ({ ...prev, currentPage: 1 }));
-    }
-  }, [selectedState, selectedLga, selectedProject, searchTerm]);
-
-  const handleView = (transaction) => {
-    setSelectedTransaction(transaction);
-    setViewModalOpen(true);
-  };
-
-  const handleConfirmTransaction = async (transactionId) => {
-    if (!selectedPaymentMethod) {
-      setError("Please select a payment method");
-      return;
-    }
-
-    // Find the transaction to get the hub/communityId
-    const transaction = transactions.find(t => t.transactionId === transactionId);
-    if (!transaction) {
-      setError("Transaction not found");
-      return;
-    }
-
-    const hubId = transaction.hub || transaction.hub_info?.lga_info?.lgaId || transaction.communityId;
-
-    setIsConfirming(true);
     try {
-      const payload = {
-        paymentMethod: selectedPaymentMethod,
-        hub: hubId,
-        transactionId: transactionId,
-      };
-      const response = await api.put(`/transactions/${transactionId}/confirm`, payload);
-      if (response.status >= 200 && response.status < 300) {
-        // Refresh transactions
-        const transactionsResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/transactions`);
-        const newTransactions = Array.isArray(transactionsResponse.data) 
-          ? transactionsResponse.data 
-          : (Array.isArray(transactionsResponse.data?.data) ? transactionsResponse.data.data : []);
-        setTransactions(newTransactions);
-        setIsConfirmModalOpen(false);
-        setConfirmTransactionId(null);
-        setSelectedPaymentMethod("");
-        setError(null);
-      } else {
-        throw new Error(response.data?.message || 'Failed to confirm transaction');
-      }
+      const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/load-equipment2`, {
+        params: {
+          hubId: modalSelectedLga,
+          serviceId: serviceId,
+          serviceCategoryId: serviceCategoryId,
+        }
+      });
+      return response.data || [];
     } catch (error) {
-      console.error("Error confirming transaction:", error);
-      setError(error.response?.data?.message || 'Failed to confirm transaction');
-    } finally {
-      setIsConfirming(false);
+      console.error("Error fetching equipment:", error);
+      return [];
     }
   };
 
-  const handleUpdateProject = async (transactionId, projectId) => {
-    try {
-      const response = await api.put(`/transactions/${transactionId}/project-type`, { projectId, transactionId: transactionId });
-      if (response.status >= 200 && response.status < 300) {
-        // Refresh transactions
-        const transactionsResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/transactions`);
-        const newTransactions = Array.isArray(transactionsResponse.data) 
-          ? transactionsResponse.data 
-          : (Array.isArray(transactionsResponse.data?.data) ? transactionsResponse.data.data : []);
-        setTransactions(newTransactions);
-        setError(null);
-      } else {
-        throw new Error(response.data?.message || 'Failed to update project');
-      }
-    } catch (error) {
-      console.error("Error updating project:", error);
-      setError(error.response?.data?.message || 'Failed to update project');
-    }
+  // Calculate total cost
+  const calculateTotal = () => {
+    return formData.services.reduce((sum, service) => {
+      return sum + (parseFloat(service.cost) * (service.quantity || 1));
+    }, 0).toFixed(2);
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const handleSearchFarmers = async () => {
-    setIsSearching(true);
+  // Handle farmer search
+  const handleSearchFarmer = async () => {
+    if (!farmerSearchTerm.trim()) return;
+    
+    setIsSearchingFarmer(true);
     try {
       const params = {
         search: farmerSearchTerm,
@@ -407,51 +282,47 @@ const Transactions = () => {
       console.error("Error searching farmers:", error);
       setSearchResults([]);
     } finally {
-      setIsSearching(false);
+      setIsSearchingFarmer(false);
     }
   };
 
+  // Handle farmer selection
   const handleSelectFarmer = (farmer) => {
     setSelectedFarmer(farmer);
     setFormData(prev => ({
       ...prev,
       farmer: farmer.farmerId,
-      msp: farmer.msp,
-      hub: farmer.hub || (userRole === 'State Coordinator' ? modalSelectedLga : "")
+      farmerId: farmer.farmerId,
+      phoneNumber: farmer.phoneNumber,
+      farmerFirstName: farmer.farmerFirstName,
+      farmerLastName: farmer.farmerLastName
     }));
     setFarmerSearchTerm("");
     setSearchResults([]);
-    setIsFarmerSearchOpen(false);
   };
 
-  const handleCreateFarmer = async (e) => {
-    e.preventDefault();
+  // Handle create new farmer
+  const handleCreateFarmer = async () => {
+    if (!formData.farmerFirstName || !formData.farmerLastName || !formData.phoneNumber) {
+      setError("Please enter farmer's first name, last name, and phone number");
+      return;
+    }
+
     setIsCreatingFarmer(true);
     try {
       const payload = {
-        ...newFarmerData,
+        farmerFirstName: formData.farmerFirstName,
+        farmerLastName: formData.farmerLastName,
+        phoneNumber: formData.phoneNumber,
         hub: modalSelectedLga,
         stateId: userRole === 'State Coordinator' ? userStateId : modalSelectedState
       };
+      
       const response = await api.post('/farmers', payload);
       const newFarmer = Array.isArray(response.data) ? response.data[0] : response.data;
-      setSelectedFarmer(newFarmer);
-      setFormData(prev => ({
-        ...prev,
-        farmer: newFarmer.farmerId,
-        msp: newFarmer.msp || null,
-        hub: newFarmer.hub || modalSelectedLga
-      }));
-      setNewFarmerData({
-        farmerFirstName: "",
-        farmerLastName: "",
-        phoneNumber: "",
-        gender: "",
-        ageBracket: "",
-      });
-      setFarmerSearchTerm("");
-      setSearchResults([]);
-      setIsFarmerSearchOpen(false);
+      
+      handleSelectFarmer(newFarmer);
+      setError(null);
     } catch (error) {
       console.error("Error creating farmer:", error);
       setError(error.response?.data?.message || "Failed to create farmer");
@@ -460,136 +331,193 @@ const Transactions = () => {
     }
   };
 
-  const handleAddService = (service) => {
-    if (!selectedServices.some(s => s.serviceId === service.serviceId)) {
+  // Handle service addition
+  const handleAddService = async (service) => {
+    if (!formData.services.some(s => s.serviceId === service.serviceId)) {
+      // Load equipment for this service - pass serviceCategoryId from the service object
+      const equipmentList = await loadEquipmentForService(service.serviceId, service.serviceCategoryId);
+      
       const newService = {
         ...service,
         quantity: 1,
-        totalCost: parseFloat(service.price || service.cost),
-        equipmentId: ""
+        equipmentId: "",
+        availableEquipment: equipmentList
       };
       
-      setSelectedServices(prev => [...prev, newService]);
-      
       setFormData(prev => ({
         ...prev,
-        totalCost: (parseFloat(prev.totalCost || 0) + parseFloat(newService.totalCost)).toFixed(2)
+        services: [...prev.services, newService]
       }));
     }
   };
 
+  // Handle service removal
   const handleRemoveService = (serviceId) => {
-    const serviceToRemove = selectedServices.find(s => s.serviceId === serviceId);
-    if (serviceToRemove) {
-      setSelectedServices(prev => prev.filter(s => s.serviceId !== serviceId));
-      setFormData(prev => ({
-        ...prev,
-        totalCost: (parseFloat(prev.totalCost || 0) - parseFloat(serviceToRemove.totalCost)).toFixed(2),
-        equipment: prev.equipment.filter(id => id !== serviceToRemove.equipmentId)
-      }));
-    }
-  };
-
-  const handleSelectEquipment = (serviceId, equipmentId) => {
-    const updatedServices = selectedServices.map(s => 
-      s.serviceId === serviceId ? { ...s, equipmentId } : s
-    );
-    setSelectedServices(updatedServices);
-    
-    const allEquipmentIds = updatedServices
-      .filter(s => s.equipmentId)
-      .map(s => s.equipmentId);
     setFormData(prev => ({
       ...prev,
-      equipment: allEquipmentIds
+      services: prev.services.filter(s => s.serviceId !== serviceId)
     }));
   };
 
-  const handleAddCommodity = (commodity) => {
-    if (!selectedCommodities.some(c => c.commodityId === commodity.commodityId)) {
-      setSelectedCommodities(prev => [...prev, commodity]);
-      setFormData(prev => ({
-        ...prev,
-        transaction_commodity: [...prev.transaction_commodity, commodity.commodityId]
-      }));
-    }
-  };
-
-  const handleRemoveCommodity = (commodityId) => {
-    setSelectedCommodities(prev => prev.filter(c => c.commodityId !== commodityId));
+  // Handle service equipment change
+  const handleEquipmentChange = (serviceId, equipmentId) => {
     setFormData(prev => ({
       ...prev,
-      transaction_commodity: prev.transaction_commodity.filter(id => id !== commodityId)
+      services: prev.services.map(s => 
+        s.serviceId === serviceId ? { ...s, equipmentId } : s
+      )
     }));
   };
 
+  // Handle service quantity change
+  const handleQuantityChange = (serviceId, quantity) => {
+    const qty = Math.max(1, parseInt(quantity) || 1);
+    setFormData(prev => ({
+      ...prev,
+      services: prev.services.map(s => 
+        s.serviceId === serviceId ? { ...s, quantity: qty } : s
+      )
+    }));
+  };
+
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
     try {
-      if (!formData.farmer || !formData.projectId) {
-        setError("Please select a farmer and project");
+      // Validate required fields
+      if (!selectedFarmer) {
+        setError("Please select or create a farmer");
         setIsSubmitting(false);
         return;
       }
-      if (userRole === 'National Coordinator') {
-        if (!modalSelectedState || !modalSelectedLga) {
-          setError("Please select state and hub");
-          setIsSubmitting(false);
-          return;
-        }
-        formData.hub = modalSelectedLga;
-      } else if (userRole === 'State Coordinator') {
-        if (!modalSelectedLga) {
-          setError("Please select hub");
-          setIsSubmitting(false);
-          return;
-        }
-        formData.hub = modalSelectedLga;
+
+      if (!modalSelectedLga) {
+        setError("Please select a hub");
+        setIsSubmitting(false);
+        return;
       }
 
-      const response = await api.post('/transactions', formData);
+      if (formData.services.length === 0) {
+        setError("Please add at least one service");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validate all services have equipment selected
+      const incompleteServices = formData.services.filter(s => !s.equipmentId);
+      if (incompleteServices.length > 0) {
+        setError("Please select equipment for all services");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Calculate total quantity (sum of all service quantities)
+      const totalQuantity = formData.services.reduce((sum, service) => {
+        return sum + (service.quantity || 1);
+      }, 0);
+
+      // Prepare the services array with string serviceId
+      const servicesPayload = formData.services.map(s => ({
+        serviceId: String(s.serviceId), // Convert to string
+        quantity: s.quantity,
+        equipmentId: s.equipmentId
+      }));
+
+      const payload = {
+        farmer: formData.farmer,
+        projectId: formData.projectId,
+        hub: modalSelectedLga,
+        totalCost: calculateTotal(),
+        quantity: totalQuantity, // Keep for backward compatibility
+        services: servicesPayload, // Send services array with string serviceId
+        transactionType: "Service"
+      };
+
+      console.log("Submitting payload:", JSON.stringify(payload, null, 2));
+
+      const response = await api.post('/transactions', payload);
       
       if (response.status >= 200 && response.status < 300) {
+        // Refresh transactions
         const transactionsResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/transactions`);
-        const newTransactions = Array.isArray(transactionsResponse.data) 
+        setTransactions(Array.isArray(transactionsResponse.data) 
           ? transactionsResponse.data 
-          : (Array.isArray(transactionsResponse.data?.data) ? transactionsResponse.data.data : []);
+          : (Array.isArray(transactionsResponse.data?.data) 
+            ? transactionsResponse.data.data 
+            : []));
         
-        setTransactions(newTransactions);
+        // Reset form
         setIsModalOpen(false);
         setFormData({
-          msp: "",
           farmer: "",
-          transactionType: "Service",
-          totalCost: "",
-          hub: "",
-          transaction_commodity: [],
+          farmerId: "",
+          phoneNumber: "",
+          farmerFirstName: "",
+          farmerLastName: "",
           projectId: "",
-          equipment: []
+          hub: "",
+          services: []
         });
+        setModalSelectedState("");
+        setModalSelectedLga("");
         setSelectedFarmer(null);
-        setSelectedServices([]);
-        setSelectedCommodities([]);
         setError(null);
-        if (userRole === 'National Coordinator') {
-          setModalSelectedState("");
-          setModalSelectedLga("");
-        } else if (userRole === 'State Coordinator') {
-          setModalSelectedLga("");
-        }
-      } else {
-        throw new Error(response.data?.message || 'Failed to add transaction');
       }
     } catch (error) {
-      console.error("Submission error:", error);
-      setError(error.response?.data?.message || error.message || 'Failed to add transaction');
+      console.error("Submission error:", error.response?.data);
+      setError(error.response?.data?.message || error.response?.data?.errors || 'Failed to create transaction');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Handle view transaction
+  const handleView = (transaction) => {
+    setSelectedTransaction(transaction);
+    setViewModalOpen(true);
+  };
+
+  // Handle confirm transaction
+  const handleConfirmTransaction = async () => {
+    if (!selectedPaymentMethod) {
+      setError("Please select a payment method");
+      return;
+    }
+
+    setIsConfirming(true);
+    try {
+      const payload = {
+        paymentMethod: selectedPaymentMethod,
+        transactionId: confirmTransactionId,
+      };
+      
+      const response = await api.put(`/transactions/${confirmTransactionId}/confirm`, payload);
+      
+      if (response.status >= 200 && response.status < 300) {
+        // Refresh transactions
+        const transactionsResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/transactions`);
+        setTransactions(Array.isArray(transactionsResponse.data) 
+          ? transactionsResponse.data 
+          : (Array.isArray(transactionsResponse.data?.data) 
+            ? transactionsResponse.data.data 
+            : []));
+        
+        setIsConfirmModalOpen(false);
+        setConfirmTransactionId(null);
+        setSelectedPaymentMethod("");
+        setError(null);
+      }
+    } catch (error) {
+      console.error("Error confirming transaction:", error);
+      setError(error.response?.data?.message || 'Failed to confirm transaction');
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  // Pagination handlers
   const handlePageChange = (page) => {
     if (page >= 1 && page <= pagination.totalPages) {
       setPagination(prev => ({ ...prev, currentPage: page }));
@@ -601,22 +529,39 @@ const Transactions = () => {
     setPagination(prev => ({ ...prev, perPage, currentPage: 1 }));
   };
 
-  const isFarmerSearchEnabled = userRole === 'National Coordinator' 
-    ? modalSelectedState && modalSelectedLga 
-    : userRole === 'State Coordinator' 
-      ? modalSelectedLga 
-      : true;
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString();
+  };
 
+  // Check if user is National Coordinator
+  const isNationalCoordinator = userRole === 'National Coordinator';
+
+  // Beautified status badge function
+ // Beautified status badge function - UPDATED COLORS
+// Simplified status badges
+const getStatusBadge = (status) => {
+  const statusText = status?.toLowerCase();
+  
+  if (statusText === 'paid' || statusText === 'completed') {
+    return <span className="badge bg-success">Paid</span>;
+  } else if (statusText === 'pending') {
+    return <span className="badge bg-warning">Pending</span>;
+  } else if (statusText === 'failed' || statusText === 'cancelled') {
+    return <span className="badge bg-danger">{status}</span>;
+  } else {
+    return <span className="badge bg-secondary">{status || 'Unknown'}</span>;
+  }
+};
   return (
     <div className="col-lg-12">
       <div className="card">
         <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
           <h5 className="card-title mb-3 mb-md-0">Transactions</h5>
-          {(userRole === 'National Coordinator' || userRole === 'State Coordinator' || userRole === 'SUPER ADMIN' || userRole === 'ADMIN') && (
+          {(['National Coordinator', 'State Coordinator', 'SUPER ADMIN', 'ADMIN'].includes(userRole?.trim())) && (
             <button
               className="btn btn-primary"
               onClick={() => setIsModalOpen(true)}
-              disabled={loading || (userRole === 'State Coordinator' && !userStateId)}
+              disabled={loading}
             >
               Add Transaction
             </button>
@@ -624,8 +569,9 @@ const Transactions = () => {
         </div>
         
         <div className="card-body">
+          {/* Filters Section */}
           <div className="row mb-4 g-3">
-            {(userRole === 'ADMIN' || userRole === 'National Coordinator') && (
+            {(['National Coordinator', 'SUPER ADMIN', 'ADMIN'].includes(userRole?.trim())) && (
               <div className="col-12 col-md-6 col-lg-3">
                 <label htmlFor="stateFilter" className="form-label">Filter by State</label>
                 <select
@@ -633,7 +579,6 @@ const Transactions = () => {
                   className="form-select"
                   value={selectedState}
                   onChange={(e) => setSelectedState(e.target.value)}
-                  disabled={loadingStates}
                 >
                   <option value="">All States</option>
                   {states.map((state) => (
@@ -653,7 +598,7 @@ const Transactions = () => {
                   className="form-select"
                   value={selectedLga}
                   onChange={(e) => setSelectedLga(e.target.value)}
-                  disabled={lgas.length === 0 || loadingStates}
+                  disabled={lgas.length === 0}
                 >
                   <option value="">All Hubs</option>
                   {lgas.map((lga) => (
@@ -672,7 +617,6 @@ const Transactions = () => {
                 className="form-select"
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
-                disabled={loadingProjects}
               >
                 <option value="">All Projects</option>
                 {projects.map(project => (
@@ -704,7 +648,7 @@ const Transactions = () => {
               <button 
                 className="btn btn-secondary w-100"
                 onClick={() => {
-                  if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
+                  if (['National Coordinator', 'SUPER ADMIN', 'ADMIN'].includes(userRole?.trim())) {
                     setSelectedState("");
                   }
                   setSelectedLga("");
@@ -712,7 +656,7 @@ const Transactions = () => {
                   setSearchTerm("");
                 }}
                 disabled={
-                  (userRole === 'ADMIN' || userRole === 'National Coordinator') ? 
+                  (['National Coordinator', 'SUPER ADMIN', 'ADMIN'].includes(userRole?.trim())) ?
                   (!selectedState && !selectedLga && !selectedProject && !searchTerm) :
                   (!selectedLga && !selectedProject && !searchTerm)
                 }
@@ -726,6 +670,7 @@ const Transactions = () => {
             <div className="alert alert-danger">{error}</div>
           )}
           
+          {/* Transactions Table */}
           {loading ? (
             <div className="text-center py-4">
               <div className="spinner-border text-primary" role="status">
@@ -754,69 +699,59 @@ const Transactions = () => {
                       transactions.map((transaction, index) => (
                         <tr key={transaction.transactionId || index}>
                           <td>{(pagination.currentPage - 1) * pagination.perPage + index + 1}</td>
-                          <td>{transaction.transactionReference}</td>
                           <td>
-                            {transaction.farmer_info?.farmerFirstName} {transaction.farmer_info?.farmerLastName}
-                          </td>
-                          <td>{transaction.hub_info?.lgas?.lgaName}</td>
-                          <td>₦{parseFloat(transaction.totalCost || 0).toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}</td>
-                          <td>
-                            <span
-                              className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                transaction.transactionStatus === "Paid" || transaction.transactionStatus === "PAID"
-                                  ? "bg-primary text-white"
-                                  : transaction.transactionStatus === "Pending" || transaction.transactionStatus === "PENDING"
-                                  ? "bg-yellow text-black"
-                                  : "bg-red text-red"
-                              }`}
-                            >
-                              {transaction.transactionStatus}
+                            <span className="font-mono text-sm">
+                              {transaction.transactionReference}
                             </span>
                           </td>
                           <td>
-                            {transaction.projects?.projectName ? (
-                              transaction.projects.projectName
-                            ) : (
-                              <select
-                                className="form-select form-select-sm"
-                                value=""
-                                onChange={(e) => handleUpdateProject(transaction.transactionId, e.target.value)}
-                                disabled={loadingProjects || isConfirming}
-                              >
-                                <option value="">Select project...</option>
-                                {projects.map(project => (
-                                  <option key={project.id} value={project.id}>
-                                    {project.name}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
+                            <div className="font-medium">
+                              {transaction.farmer_info?.farmerFirstName} {transaction.farmer_info?.farmerLastName}
+                            </div>
+                            <div className="text-xs text-muted">
+                              {transaction.farmer_info?.phoneNumber}
+                            </div>
+                          </td>
+                          <td>{transaction.hub_info?.lgas?.lgaName}</td>
+                          <td className="font-semibold">
+                            ₦{parseFloat(transaction.totalCost || 0).toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </td>
+                          <td>
+                            {getStatusBadge(transaction.transactionStatus)}
+                          </td>
+                          <td>
+                            <span className="badge bg-light text-dark">
+                              {transaction.projects?.projectName || 'No Project'}
+                            </span>
                           </td>
                           <td>{formatDate(transaction.created_at)}</td>
                           <td>
                             <div className="d-flex gap-2">
                               <button
-                                className="w-32-px h-32-px bg-primary-light text-primary-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
                                 onClick={() => handleView(transaction)}
-                                title="View"
+                                title="View Details"
                               >
                                 <Icon icon="iconamoon:eye-light" width={16} />
+                                <span className="d-none d-md-inline">View</span>
                               </button>
+                              
                               {(transaction.transactionStatus === "Pending" || transaction.transactionStatus === "PENDING") && (
                                 <button
-                                  className="w-32-px h-32-px bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                  className="btn btn-sm btn-success d-flex align-items-center gap-1"
                                   onClick={() => {
                                     setConfirmTransactionId(transaction.transactionId);
-                                    setSelectedPaymentMethod(""); // Reset payment method
+                                    setSelectedPaymentMethod("");
                                     setIsConfirmModalOpen(true);
                                   }}
-                                  title="Confirm Transaction"
+                                  title="Confirm Payment"
                                   disabled={isConfirming}
                                 >
                                   <Icon icon="ion:checkmark-circle-outline" width={16} />
+                                  <span className="d-none d-md-inline">Confirm</span>
                                 </button>
                               )}
                             </div>
@@ -826,7 +761,10 @@ const Transactions = () => {
                     ) : (
                       <tr>
                         <td colSpan="9" className="text-center py-4">
-                          No transactions found
+                          <div className="text-muted">
+                            <Icon icon="mdi:file-document-outline" className="fs-1 mb-2" />
+                            <p>No transactions found</p>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -834,6 +772,7 @@ const Transactions = () => {
                 </table>
               </div>
               
+              {/* Pagination */}
               {pagination.totalPages > 1 && (
                 <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-3">
                   <div className="d-flex align-items-center">
@@ -916,9 +855,13 @@ const Transactions = () => {
 
       {/* Add Transaction Modal */}
       {isModalOpen && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content">
+            <motion.div 
+              className="modal-content"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
               <div className="modal-header bg-primary text-white">
                 <h5 className="modal-title text-white">Create Transaction</h5>
                 <button
@@ -927,49 +870,46 @@ const Transactions = () => {
                   onClick={() => {
                     setIsModalOpen(false);
                     setFormData({
-                      msp: "",
                       farmer: "",
-                      transactionType: "Service",
-                      totalCost: "",
-                      hub: "",
-                      transaction_commodity: [],
+                      farmerId: "",
+                      phoneNumber: "",
+                      farmerFirstName: "",
+                      farmerLastName: "",
                       projectId: "",
-                      equipment: []
+                      hub: "",
+                      services: []
                     });
+                    setModalSelectedState("");
+                    setModalSelectedLga("");
                     setSelectedFarmer(null);
-                    setSelectedServices([]);
-                    setSelectedCommodities([]);
+                    setFarmerSearchTerm("");
+                    setSearchResults([]);
                     setError(null);
-                    if (userRole === 'National Coordinator') {
-                      setModalSelectedState("");
-                      setModalSelectedLga("");
-                    } else if (userRole === 'State Coordinator') {
-                      setModalSelectedLga("");
-                    }
                   }}
                   disabled={isSubmitting}
-                ></button>
+                />
               </div>
-              <div className="modal-body">
-                <form onSubmit={handleSubmit}>
-                  <div className="row g-3 mb-4">
-                    {userRole === 'National Coordinator' && (
+              
+              <form onSubmit={handleSubmit}>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    {/* State Selection for National Coordinator */}
+                    {isNationalCoordinator && (
                       <div className="col-md-6">
-                        <label className="form-label">State</label>
+                        <label className="form-label">State *</label>
                         <select
                           className="form-select"
                           value={modalSelectedState}
                           onChange={(e) => {
                             setModalSelectedState(e.target.value);
                             setModalSelectedLga("");
-                            setFormData(prev => ({ ...prev, hub: "" }));
-                            setSelectedServices([]);
+                            setFormData(prev => ({ ...prev, hub: "", services: [] }));
                           }}
-                          disabled={isSubmitting || loadingStates}
                           required
+                          disabled={isSubmitting}
                         >
                           <option value="">Select State</option>
-                          {states.map((state) => (
+                          {states.map(state => (
                             <option key={state.id} value={state.id}>
                               {state.name}
                             </option>
@@ -977,63 +917,40 @@ const Transactions = () => {
                         </select>
                       </div>
                     )}
-                    
-                    {(userRole === 'National Coordinator' || userRole === 'State Coordinator') && (
-                      <div className="col-md-6">
-                        <label className="form-label">Hub</label>
-                        <select
-                          className="form-select"
-                          value={modalSelectedLga}
-                          onChange={(e) => {
-                            setModalSelectedLga(e.target.value);
-                            setFormData(prev => ({ ...prev, hub: e.target.value }));
-                            setSelectedServices([]);
-                          }}
-                          disabled={lgas.length === 0 || isSubmitting}
-                          required
-                        >
-                          <option value="">Select Hub</option>
-                          {lgas.map((lga) => (
-                            <option key={lga.id} value={lga.id}>
-                              {lga.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                    
-                    <div className="col-md-12">
-                      <label className="form-label">Farmer</label>
-                      <div className="input-group">
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedFarmer ? 
-                            `${selectedFarmer.farmerFirstName} ${selectedFarmer.farmerLastName} (${selectedFarmer.hubs?.lgas?.lgaName || 'No Hub'})` : 
-                            ""}
-                          readOnly
-                        />
-                        <button 
-                          className="btn btn-outline-primary" 
-                          type="button"
-                          onClick={() => setIsFarmerSearchOpen(true)}
-                          disabled={!isFarmerSearchEnabled}
-                        >
-                          Search
-                        </button>
-                      </div>
-                    </div>
-                    
+
+                    {/* Hub Selection */}
                     <div className="col-md-6">
-                      <label className="form-label">Project</label>
+                      <label className="form-label">Hub *</label>
+                      <select
+                        className="form-select"
+                        value={modalSelectedLga}
+                        onChange={(e) => {
+                          setModalSelectedLga(e.target.value);
+                          setFormData(prev => ({ ...prev, hub: e.target.value, services: [] }));
+                        }}
+                        required
+                        disabled={isSubmitting || (isNationalCoordinator && !modalSelectedState)}
+                      >
+                        <option value="">Select Hub</option>
+                        {lgas.map(lga => (
+                          <option key={lga.id} value={lga.id}>
+                            {lga.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Project Selection */}
+                    <div className="col-md-6">
+                      <label className="form-label">Project *</label>
                       <select
                         className="form-select"
                         value={formData.projectId}
                         onChange={(e) => setFormData({...formData, projectId: e.target.value})}
-                        disabled={isSubmitting || loadingProjects}
                         required
+                        disabled={isSubmitting}
                       >
-                        <option value="">Select a project...</option>
+                        <option value="">Select Project</option>
                         {projects.map(project => (
                           <option key={project.id} value={project.id}>
                             {project.name}
@@ -1041,436 +958,427 @@ const Transactions = () => {
                         ))}
                       </select>
                     </div>
-                    
-                    <div className="col-md-6">
-                      <label className="form-label">Transaction Type</label>
-                      <select
-                        className="form-select"
-                        value={formData.transactionType}
-                        onChange={(e) => setFormData({...formData, transactionType: e.target.value})}
-                        disabled={isSubmitting}
-                        required
-                      >
-                        <option value="Service">Service</option>
-                        <option value="Product">Product</option>
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <h6 className="border-bottom pb-2">Services</h6>
-                    <div className="mb-3">
-                      <select
-                        className="form-select"
-                        onChange={(e) => {
-                          const serviceId = e.target.value;
-                          if (serviceId) {
-                            const service = services.find(s => s.serviceId == serviceId);
-                            if (service) {
-                              handleAddService({
-                                ...service,
-                                quantity: 1,
-                                totalCost: parseFloat(service.cost)
-                              });
-                            }
-                            e.target.value = "";
-                          }
-                        }}
-                        disabled={isSubmitting || !modalSelectedLga}
-                      >
-                        <option value="">Select a service to add...</option>
-                        {services.map(service => (
-                          <option 
-                            key={service.serviceId} 
-                            value={service.serviceId}
-                            disabled={selectedServices.some(s => s.serviceId === service.serviceId)}
-                          >
-                            {service.serviceName} (₦{service.cost}/{service.measuringUnit})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    {selectedServices.length > 0 && (
-                      <div className="table-responsive mb-2">
-                        <table className="table table-sm">
-                          <thead>
-                            <tr>
-                              <th>Service</th>
-                              <th>Unit Price</th>
-                              <th>Quantity</th>
-                              <th>Equipment</th>
-                              <th>Total</th>
-                              <th></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {selectedServices.map(service => (
-                              <tr key={service.serviceId}>
-                                <td>
-                                  <div>{service.serviceName}</div>
-                                  <small className="text-muted">{service.measuringUnit}</small>
-                                </td>
-                                <td>₦{parseFloat(service.cost).toLocaleString('en-US', {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2
-                                })}</td>
-                                <td style={{ width: '100px' }}>
+
+                    {/* Farmer Section */}
+                    <div className="col-12">
+                      <label className="form-label">Farmer *</label>
+                      
+                      {/* Selected Farmer Display */}
+                      {selectedFarmer ? (
+                        <div className="alert alert-success mb-3">
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <strong>Selected Farmer:</strong> {selectedFarmer.farmerFirstName} {selectedFarmer.farmerLastName}
+                              <br />
+                              <small>Phone: {selectedFarmer.phoneNumber} | ID: {selectedFarmer.farmerId}</small>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-secondary"
+                              onClick={() => {
+                                setSelectedFarmer(null);
+                                setFormData(prev => ({
+                                  ...prev,
+                                  farmer: "",
+                                  farmerId: "",
+                                  phoneNumber: "",
+                                  farmerFirstName: "",
+                                  farmerLastName: ""
+                                }));
+                              }}
+                              disabled={isSubmitting}
+                            >
+                              Change
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Search Existing Farmer */}
+                          <div className="mb-3">
+                            <div className="input-group">
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Search farmer by phone number or ID"
+                                value={farmerSearchTerm}
+                                onChange={(e) => setFarmerSearchTerm(e.target.value)}
+                                disabled={isSubmitting || !modalSelectedLga}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={handleSearchFarmer}
+                                disabled={isSearchingFarmer || !farmerSearchTerm || !modalSelectedLga}
+                              >
+                                {isSearchingFarmer ? 'Searching...' : 'Search'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Search Results */}
+                          {searchResults.length > 0 && (
+                            <div className="mb-3">
+                              <div className="card">
+                                <div className="card-body p-2">
+                                  <h6 className="card-title">Search Results</h6>
+                                  <div className="list-group">
+                                    {searchResults.map(farmer => (
+                                      <button
+                                        key={farmer.farmerId}
+                                        type="button"
+                                        className="list-group-item list-group-item-action"
+                                        onClick={() => handleSelectFarmer(farmer)}
+                                      >
+                                        {farmer.farmerFirstName} {farmer.farmerLastName} - {farmer.phoneNumber}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Create New Farmer */}
+                          <div className="card">
+                            <div className="card-body">
+                              <h6 className="card-title">Or Create New Farmer</h6>
+                              <div className="row g-2">
+                                <div className="col-md-4">
                                   <input
-                                    type="number"
-                                    min="1"
+                                    type="text"
                                     className="form-control form-control-sm"
-                                    value={service.quantity}
-                                    onChange={(e) => {
-                                      const newQuantity = parseInt(e.target.value) || 1;
-                                      const updatedServices = selectedServices.map(s => 
-                                        s.serviceId === service.serviceId 
-                                          ? { 
-                                              ...s, 
-                                              quantity: newQuantity,
-                                              totalCost: parseFloat(s.price || s.cost) * newQuantity
-                                            } 
-                                          : s
-                                      );
-                                      setSelectedServices(updatedServices);
-                                      
-                                      const newTotal = updatedServices.reduce(
-                                        (sum, s) => sum + (s.totalCost || 0), 0
-                                      );
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        totalCost: newTotal.toFixed(2)
-                                      }));
-                                    }}
-                                    disabled={isSubmitting}
+                                    placeholder="First Name"
+                                    value={formData.farmerFirstName}
+                                    onChange={(e) => setFormData({...formData, farmerFirstName: e.target.value})}
+                                    disabled={isSubmitting || isCreatingFarmer}
                                   />
-                                </td>
-                                <td style={{ width: '200px' }}>
-                                  <select
-                                    className="form-select form-select-sm"
-                                    value={service.equipmentId || ""}
-                                    onChange={(e) => handleSelectEquipment(service.serviceId, e.target.value)}
-                                    disabled={isSubmitting || !modalSelectedLga || selectedServices.length === 0}
+                                </div>
+                                <div className="col-md-4">
+                                  <input
+                                    type="text"
+                                    className="form-control form-control-sm"
+                                    placeholder="Last Name"
+                                    value={formData.farmerLastName}
+                                    onChange={(e) => setFormData({...formData, farmerLastName: e.target.value})}
+                                    disabled={isSubmitting || isCreatingFarmer}
+                                  />
+                                </div>
+                                <div className="col-md-3">
+                                  <input
+                                    type="tel"
+                                    className="form-control form-control-sm"
+                                    placeholder="Phone Number"
+                                    value={formData.phoneNumber}
+                                    onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                                    disabled={isSubmitting || isCreatingFarmer}
+                                  />
+                                </div>
+                                <div className="col-md-1">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-primary w-100"
+                                    onClick={handleCreateFarmer}
+                                    disabled={isSubmitting || isCreatingFarmer || !formData.farmerFirstName || !formData.farmerLastName || !formData.phoneNumber}
                                   >
-                                    <option value="">Select equipment...</option>
-                                    {equipment
-                                      .filter(item => Number(item.serviceCategoryId) === Number(service.serviceCategoryId))
-                                      .filter(item => !selectedServices.some(s => s.equipmentId === item.equipmentId && s.serviceId !== service.serviceId))
-                                      .map(item => (
-                                        <option 
-                                          key={item.equipmentId} 
-                                          value={item.equipmentId}
-                                        >
+                                    {isCreatingFarmer ? '...' : 'Create'}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Services Section */}
+                    <div className="col-12">
+                      <label className="form-label">Services *</label>
+                      
+                      {/* Services Dropdown */}
+                      {modalSelectedLga && services.length > 0 ? (
+                        <select
+                          className="form-select mb-3"
+                          onChange={(e) => {
+                            const serviceId = e.target.value;
+                            if (serviceId) {
+                              const service = services.find(s => s.serviceId == serviceId);
+                              if (service) handleAddService(service);
+                              e.target.value = "";
+                            }
+                          }}
+                          disabled={isSubmitting}
+                        >
+                          <option value="">Select a service to add...</option>
+                          {services.map(service => (
+                            <option 
+                              key={service.serviceId} 
+                              value={service.serviceId}
+                              disabled={formData.services.some(s => s.serviceId === service.serviceId)}
+                            >
+                              {service.serviceName} - ₦{service.cost} per {service.measuringUnit}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="alert alert-warning">
+                          {modalSelectedLga ? 'No services available in this hub' : 'Select a hub first'}
+                        </div>
+                      )}
+
+                      {/* Selected Services List */}
+                      {formData.services.length > 0 && (
+                        <div className="table-responsive">
+                          <table className="table table-sm">
+                            <thead>
+                              <tr>
+                                <th>Service</th>
+                                <th>Unit Price</th>
+                                <th>Quantity</th>
+                                <th>Equipment</th>
+                                <th>Total</th>
+                                <th></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {formData.services.map(service => (
+                                <tr key={service.serviceId}>
+                                  <td>
+                                    <div>{service.serviceName}</div>
+                                    <small className="text-muted">{service.measuringUnit}</small>
+                                  </td>
+                                  <td>₦{parseFloat(service.cost).toLocaleString('en-US', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                  })}</td>
+                                  <td style={{ width: '100px' }}>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      className="form-control form-control-sm"
+                                      value={service.quantity}
+                                      onChange={(e) => handleQuantityChange(service.serviceId, e.target.value)}
+                                      disabled={isSubmitting}
+                                    />
+                                  </td>
+                                  <td style={{ width: '200px' }}>
+                                    <select
+                                      className="form-select form-select-sm"
+                                      value={service.equipmentId || ""}
+                                      onChange={(e) => handleEquipmentChange(service.serviceId, e.target.value)}
+                                      disabled={isSubmitting || !service.availableEquipment || service.availableEquipment.length === 0}
+                                    >
+                                      <option value="">Select equipment...</option>
+                                      {service.availableEquipment?.map(item => (
+                                        <option key={item.equipmentId} value={item.equipmentId}>
                                           {item.serialNumber} - {item.equipmentName}
                                         </option>
                                       ))}
-                                  </select>
-                                  {equipment.length === 0 && modalSelectedLga && selectedServices.length > 0 && (
-                                    <small className="text-danger">No equipment available for this hub/service.</small>
-                                  )}
-                                </td>
-                                <td>₦{(service.totalCost || service.cost).toLocaleString()}</td>
-                                <td className="text-end">
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-danger"
-                                    onClick={() => handleRemoveService(service.serviceId)}
-                                    disabled={isSubmitting}
-                                  >
-                                    X
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                    
-                    {selectedServices.length > 0 && (
-                      <div className="text-end mb-3">
-                        <div className="d-inline-block border-top pt-2 px-3">
-                          <strong>Subtotal: ₦{parseFloat(formData.totalCost || 0).toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}</strong>
+                                    </select>
+                                    {(!service.availableEquipment || service.availableEquipment.length === 0) && (
+                                      <small className="text-danger">No equipment available</small>
+                                    )}
+                                  </td>
+                                  <td>₦{(service.cost * service.quantity).toLocaleString('en-US', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                  })}</td>
+                                  <td className="text-end">
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-danger"
+                                      onClick={() => handleRemoveService(service.serviceId)}
+                                      disabled={isSubmitting}
+                                    >
+                                      <Icon icon="mdi:close" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Total Cost Display */}
+                    {formData.services.length > 0 && (
+                      <div className="col-12">
+                        <div className="alert alert-primary">
+                          <strong>Total Cost: ₦{calculateTotal()}</strong>
                         </div>
                       </div>
                     )}
-                  </div>
-                  
-                  <div className="mb-4">
-                    <h6 className="border-bottom pb-2">Commodities</h6>
-                    <div className="mb-3">
-                      <select
-                        className="form-select"
-                        onChange={(e) => {
-                          const commodityId = e.target.value;
-                          if (commodityId) {
-                            const commodity = commodities.find(c => c.commodityId == commodityId);
-                            if (commodity) handleAddCommodity(commodity);
-                            e.target.value = "";
-                          }
-                        }}
-                        disabled={isSubmitting}
-                      >
-                        <option value="">Select commodities...</option>
-                        {commodities.map(commodity => (
-                          <option 
-                            key={commodity.commodityId} 
-                            value={commodity.commodityId}
-                            disabled={selectedCommodities.some(c => c.commodityId === commodity.commodityId)}
-                          >
-                            {commodity.commodityName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    {selectedCommodities.length > 0 && (
-                      <div className="d-flex flex-wrap gap-2">
-                        {selectedCommodities.map(commodity => (
-                          <span key={commodity.commodityId} className="badge bg-primary bg-opacity-10 text-primary p-2">
-                            {commodity.commodityName}
-                            <button 
-                              type="button" 
-                              className="ms-2 btn-close btn-close-primary"
-                              onClick={() => handleRemoveCommodity(commodity.commodityId)}
-                              style={{ fontSize: '0.5rem' }}
-                              disabled={isSubmitting}
-                            />
-                          </span>
-                        ))}
+
+                    {/* Error Message */}
+                    {error && (
+                      <div className="col-12">
+                        <div className="alert alert-danger">{error}</div>
                       </div>
                     )}
                   </div>
-                  
-                  {error && (
-                    <div className="alert alert-danger">{error}</div>
-                  )}
-                  
-                  <div className="modal-footer">
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => {
-                        setIsModalOpen(false);
-                        setFormData({
-                          msp: "",
-                          farmer: "",
-                          transactionType: "Service",
-                          totalCost: "",
-                          hub: "",
-                          transaction_commodity: [],
-                          projectId: "",
-                          equipment: []
-                        });
-                        setSelectedFarmer(null);
-                        setSelectedServices([]);
-                        setSelectedCommodities([]);
-                        setError(null);
-                        if (userRole === 'National Coordinator') {
-                          setModalSelectedState("");
-                          setModalSelectedLga("");
-                        } else if (userRole === 'State Coordinator') {
-                          setModalSelectedLga("");
-                        }
-                      }}
-                      disabled={isSubmitting}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn btn-primary"
-                      disabled={isSubmitting || !selectedFarmer || selectedServices.length === 0 || !formData.projectId ||
-                        (userRole === 'National Coordinator' && (!modalSelectedState || !modalSelectedLga)) ||
-                        (userRole === 'State Coordinator' && !modalSelectedLga)}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                          Saving...
-                        </>
-                      ) : (
-                        'Create Transaction'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+                </div>
+
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setFormData({
+                        farmer: "",
+                        farmerId: "",
+                        phoneNumber: "",
+                        farmerFirstName: "",
+                        farmerLastName: "",
+                        projectId: "",
+                        hub: "",
+                        services: []
+                      });
+                      setModalSelectedState("");
+                      setModalSelectedLga("");
+                      setSelectedFarmer(null);
+                      setFarmerSearchTerm("");
+                      setSearchResults([]);
+                      setError(null);
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={isSubmitting || formData.services.length === 0 || !formData.projectId || !modalSelectedLga || !selectedFarmer || (isNationalCoordinator && !modalSelectedState)}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        Saving...
+                      </>
+                    ) : (
+                      'Create Transaction'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
         </div>
       )}
 
-      {/* Farmer Search Modal */}
-      {isFarmerSearchOpen && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+      {/* View Transaction Modal */}
+      {viewModalOpen && selectedTransaction && (
+        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Search Farmer</h5>
+            <motion.div 
+              className="modal-content"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="modal-header bg-primary text-white">
+                <h5 className="modal-title text-white">Transaction Details</h5>
                 <button
                   type="button"
-                  className="btn-close"
-                  onClick={() => {
-                    setIsFarmerSearchOpen(false);
-                    setNewFarmerData({
-                      farmerFirstName: "",
-                      farmerLastName: "",
-                      phoneNumber: "",
-                      gender: "",
-                      ageBracket: "",
-                    });
-                  }}
-                ></button>
+                  className="btn-close btn-close-white"
+                  onClick={() => setViewModalOpen(false)}
+                />
               </div>
               <div className="modal-body">
-                <div className="mb-4">
-                  <h6>Add New Farmer</h6>
-                  <form onSubmit={handleCreateFarmer}>
-                    <div className="row g-3">
-                      <div className="col-md-6">
-                        <label className="form-label">First Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={newFarmerData.farmerFirstName}
-                          onChange={(e) => setNewFarmerData(prev => ({ ...prev, farmerFirstName: e.target.value }))}
-                          required
-                          disabled={isCreatingFarmer}
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Last Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={newFarmerData.farmerLastName}
-                          onChange={(e) => setNewFarmerData(prev => ({ ...prev, farmerLastName: e.target.value }))}
-                          required
-                          disabled={isCreatingFarmer}
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Phone Number</label>
-                        <input
-                          type="tel"
-                          className="form-control"
-                          value={newFarmerData.phoneNumber}
-                          onChange={(e) => setNewFarmerData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                          required
-                          disabled={isCreatingFarmer}
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Gender</label>
-                        <select
-                          className="form-select"
-                          value={newFarmerData.gender}
-                          onChange={(e) => setNewFarmerData(prev => ({ ...prev, gender: e.target.value }))}
-                          required
-                          disabled={isCreatingFarmer}
-                        >
-                          <option value="">Select Gender</option>
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                        </select>
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Age</label>
-                        <input
-                          type="tel"
-                          className="form-control"
-                          value={newFarmerData.ageBracket}
-                          onChange={(e) => setNewFarmerData(prev => ({ ...prev, ageBracket: e.target.value }))}
-                          required
-                          disabled={isCreatingFarmer}
-                        />
-                      </div>
-                      <div className="col-md-6 d-flex align-items-end">
-                        <button
-                          type="submit"
-                          className="btn btn-primary w-100"
-                          disabled={isCreatingFarmer || !isFarmerSearchEnabled}
-                        >
-                          {isCreatingFarmer ? (
-                            <>
-                              <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                              Creating...
-                            </>
-                          ) : (
-                            'Create Farmer'
-                          )}
-                        </button>
-                      </div>
+                <div className="row">
+                  <div className="col-md-6">
+                    <h6 className="border-bottom pb-2 mb-3">Transaction Information</h6>
+                    <div className="mb-3">
+                      <label className="form-label text-muted">Transaction ID</label>
+                      <p className="form-control-static fw-bold">{selectedTransaction.transactionId}</p>
                     </div>
-                  </form>
-                </div>
-                
-                <br/>
-                <h6>Search Farmer</h6>
-
-                <div className="input-group mb-3">
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Search by farmer name or ID..."
-                    value={farmerSearchTerm}
-                    onChange={(e) => setFarmerSearchTerm(e.target.value)}
-                    disabled={!isFarmerSearchEnabled}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={isSearching || !isFarmerSearchEnabled}
-                    onClick={handleSearchFarmers}
-                  >
-                    {isSearching ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                        Searching...
-                      </>
-                    ) : (
-                      'Search'
-                    )}
-                  </button>
-                </div>
-                
-                {searchResults.length > 0 ? (
-                  <div className="table-responsive">
-                    <table className="table">
-                      <thead>
-                        <tr>
-                          <th>Hub</th>
-                          <th>Name</th>
-                          <th>Phone</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {searchResults.map(farmer => (
-                          <tr key={farmer.farmerId}>
-                            <td>{farmer.hubs?.lgas?.lgaName || 'No Hub'}</td>
-                            <td>{farmer.farmerFirstName} {farmer.farmerLastName}</td>
-                            <td>{farmer.phoneNumber}</td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-primary"
-                                onClick={() => handleSelectFarmer(farmer)}
-                              >
-                                Select
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <div className="mb-3">
+                      <label className="form-label text-muted">Reference</label>
+                      <p className="form-control-static font-monospace">{selectedTransaction.transactionReference}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label text-muted">Status</label>
+                      <p className="form-control-static">
+                        {getStatusBadge(selectedTransaction.transactionStatus)}
+                      </p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label text-muted">Total Amount</label>
+                      <p className="form-control-static fw-bold fs-5 text-success">
+                        ₦{parseFloat(selectedTransaction.totalCost || 0).toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label text-muted">Payment Method</label>
+                      <p className="form-control-static">
+                        {selectedTransaction.paymentMethod || 'Not specified'}
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-center py-4">
-                    {farmerSearchTerm ? "No farmers found" : "Enter search term to find farmers"}
+                  <div className="col-md-6">
+                    <h6 className="border-bottom pb-2 mb-3">Farmer Information</h6>
+                    <div className="mb-3">
+                      <label className="form-label text-muted">Farmer Name</label>
+                      <p className="form-control-static fw-bold">
+                        {selectedTransaction.farmer_info?.farmerFirstName} {selectedTransaction.farmer_info?.farmerLastName}
+                      </p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label text-muted">Phone Number</label>
+                      <p className="form-control-static">{selectedTransaction.farmer_info?.phoneNumber}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label text-muted">Farmer ID</label>
+                      <p className="form-control-static font-monospace">{selectedTransaction.farmer}</p>
+                    </div>
+                    
+                    <h6 className="border-bottom pb-2 mb-3 mt-4">Hub Information</h6>
+                    <div className="mb-3">
+                      <label className="form-label text-muted">Hub Name</label>
+                      <p className="form-control-static">{selectedTransaction.hub_info?.lgas?.lgaName}</p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label text-muted">Project</label>
+                      <p className="form-control-static">
+                        <span className="badge bg-light text-dark">
+                          {selectedTransaction.projects?.projectName || 'No Project'}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label text-muted">Date Created</label>
+                      <p className="form-control-static">{formatDate(selectedTransaction.created_at)}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Services Section if available */}
+                {selectedTransaction.transaction_commodity?.length > 0 && (
+                  <div className="mt-4">
+                    <h6 className="border-bottom pb-2">Services & Commodities</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Service/Commodity</th>
+                            <th>Details</th>
+                            <th>Reference</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedTransaction.transaction_commodity.map((commodity, idx) => (
+                            <tr key={idx}>
+                              <td>{commodity.commodities?.commodityName}</td>
+                              <td>{commodity.commodities?.description || 'No description'}</td>
+                              <td className="font-monospace">{commodity.transactionReference}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1478,32 +1386,41 @@ const Transactions = () => {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => {
-                    setIsFarmerSearchOpen(false);
-                    setNewFarmerData({
-                      farmerFirstName: "",
-                      farmerLastName: "",
-                      phoneNumber: "",
-                      gender: "",
-                      ageBracket: "",
-                    });
-                  }}
+                  onClick={() => setViewModalOpen(false)}
                 >
                   Close
                 </button>
+                {(selectedTransaction.transactionStatus === "Pending" || selectedTransaction.transactionStatus === "PENDING") && (
+                  <button
+                    type="button"
+                    className="btn btn-success"
+                    onClick={() => {
+                      setViewModalOpen(false);
+                      setConfirmTransactionId(selectedTransaction.transactionId);
+                      setSelectedPaymentMethod("");
+                      setIsConfirmModalOpen(true);
+                    }}
+                  >
+                    Confirm Payment
+                  </button>
+                )}
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       )}
 
-      {/* Confirmation Modal */}
+      {/* Confirm Payment Modal */}
       {isConfirmModalOpen && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
+            <motion.div 
+              className="modal-content"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
               <div className="modal-header bg-success text-white">
-                <h5 className="modal-title text-white">Confirm Transaction</h5>
+                <h5 className="modal-title text-white">Confirm Payment</h5>
                 <button
                   type="button"
                   className="btn-close btn-close-white"
@@ -1514,12 +1431,17 @@ const Transactions = () => {
                     setError(null);
                   }}
                   disabled={isConfirming}
-                ></button>
+                />
               </div>
               <div className="modal-body">
-                <p>Are you sure you want to confirm transaction ID {confirmTransactionId}?</p>
-                <div className="mb-3">
-                  <label htmlFor="paymentMethod" className="form-label">Payment Method</label>
+                <div className="text-center mb-4">
+                  <Icon icon="ion:checkmark-circle-outline" className="text-success" width={48} />
+                  <h5 className="mt-2">Confirm Transaction Payment</h5>
+                  <p className="text-muted">Transaction ID: {confirmTransactionId}</p>
+                </div>
+                
+                <div className="mb-4">
+                  <label htmlFor="paymentMethod" className="form-label">Select Payment Method *</label>
                   <select
                     id="paymentMethod"
                     className="form-select"
@@ -1528,7 +1450,7 @@ const Transactions = () => {
                     disabled={isConfirming}
                     required
                   >
-                    <option value="">Select payment method...</option>
+                    <option value="">Choose payment method...</option>
                     {paymentMethods.map(method => (
                       <option key={method.id} value={method.id}>
                         {method.name}
@@ -1536,9 +1458,17 @@ const Transactions = () => {
                     ))}
                   </select>
                 </div>
+                
                 {error && (
                   <div className="alert alert-danger">{error}</div>
                 )}
+                
+                <div className="alert alert-info">
+                  <small>
+                    <Icon icon="mdi:information" className="me-1" />
+                    Once confirmed, this transaction will be marked as paid and cannot be reversed.
+                  </small>
+                </div>
               </div>
               <div className="modal-footer">
                 <button
@@ -1557,7 +1487,7 @@ const Transactions = () => {
                 <button
                   type="button"
                   className="btn btn-success"
-                  onClick={() => handleConfirmTransaction(confirmTransactionId)}
+                  onClick={handleConfirmTransaction}
                   disabled={isConfirming || !selectedPaymentMethod}
                 >
                   {isConfirming ? (
@@ -1566,151 +1496,11 @@ const Transactions = () => {
                       Confirming...
                     </>
                   ) : (
-                    'Confirm'
+                    'Confirm Payment'
                   )}
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Modal */}
-      {viewModalOpen && selectedTransaction && (
-        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Transaction Details</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setViewModalOpen(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <div className="row">
-                  <div className="col-md-6">
-                    <h6>Transaction Information</h6>
-                    <div className="mb-3">
-                      <label className="form-label">Transaction ID</label>
-                      <p className="form-control-static">{selectedTransaction.transactionId}</p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Reference</label>
-                      <p className="form-control-static">{selectedTransaction.transactionReference}</p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Type</label>
-                      <p className="form-control-static">{selectedTransaction.transactionType}</p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Status</label>
-                      <p className="form-control-static">
-                        <span className={`badge ${statusColors[selectedTransaction.transactionStatus] || 'bg-gray-100 text-gray-800'}`}>
-                          {selectedTransaction.transactionStatus}
-                        </span>
-                      </p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Total Cost</label>
-                      <p className="form-control-static">₦{parseFloat(selectedTransaction.totalCost || 0).toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })}</p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Payment Method</label>
-                      <p className="form-control-static">{selectedTransaction.paymentMethod || 'N/A'}</p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Project</label>
-                      <p className="form-control-static">{selectedTransaction.projects?.projectName || 'N/A'}</p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Date</label>
-                      <p className="form-control-static">{formatDate(selectedTransaction.created_at)}</p>
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <h6>Farmer Information</h6>
-                    <div className="mb-3">
-                      <label className="form-label">Farmer ID</label>
-                      <p className="form-control-static">{selectedTransaction.farmer}</p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Name</label>
-                      <p className="form-control-static">
-                        {selectedTransaction.farmer_info?.farmerFirstName} {selectedTransaction.farmer_info?.farmerLastName}
-                      </p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Phone</label>
-                      <p className="form-control-static">{selectedTransaction.farmer_info?.phoneNumber}</p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Gender</label>
-                      <p className="form-control-static">{selectedTransaction.farmer_info?.gender}</p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Age Bracket</label>
-                      <p className="form-control-static">{selectedTransaction.farmer_info?.ageBracket}</p>
-                    </div>
-                    
-                    <h6 className="mt-4">MSP Information</h6>
-                    <div className="mb-3">
-                      <label className="form-label">Hub</label>
-                      <p className="form-control-static">{selectedTransaction.hub_info?.lgas?.lgaName || `Hub #${selectedTransaction.hub}`}</p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">MSP Name</label>
-                      <p className="form-control-static">
-                        {selectedTransaction.msp_info?.users?.firstName} {selectedTransaction.msp_info?.users?.lastName}
-                      </p>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">MSP Phone</label>
-                      <p className="form-control-static">{selectedTransaction.msp_info?.users?.phoneNumber}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                {selectedTransaction.transaction_commodity?.length > 0 && (
-                  <div className="mt-4">
-                    <h6>Commodities</h6>
-                    <div className="table-responsive">
-                      <table className="table table-sm">
-                        <thead>
-                          <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Reference</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedTransaction.transaction_commodity.map((commodity, idx) => (
-                            <tr key={idx}>
-                              <td>{commodity.commodityId}</td>
-                              <td>{commodity.commodities?.commodityName}</td>
-                              <td>{commodity.transactionReference}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setViewModalOpen(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       )}
