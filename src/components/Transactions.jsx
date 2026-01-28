@@ -59,12 +59,153 @@ const Transactions = () => {
   const [isConfirming, setIsConfirming] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
 
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+const [uploadFormData, setUploadFormData] = useState({
+  // stateId: "",
+  // hubId: "",        // we'll use lgaId / hub id here
+  projectId: "",
+});
+const [selectedFile, setSelectedFile] = useState(null);
+const [uploadError, setUploadError] = useState(null);
+const [isUploading, setIsUploading] = useState(false);
+
+// Near other state declarations
+const [filterLgas, setFilterLgas] = useState([]);           // for main table filter
+const [addModalLgas, setAddModalLgas] = useState([]);       // for Add Transaction modal
+// const [uploadModalLgas, setUploadModalLgas] = useState([]); // for Upload modal
+
   // Payment methods
   const paymentMethods = [
     { id: "cash", name: "Cash" },
     { id: "bank_transfer", name: "Bank Transfer" },
     { id: "mobile_money", name: "Mobile Money" },
   ];
+
+
+  // Optional: reset form when modal opens/closes
+useEffect(() => {
+  if (isUploadModalOpen) {
+    setUploadFormData({
+      // stateId: userRole === 'State Coordinator' ? userStateId || "" : "",
+      // hubId: "",
+      projectId: "",
+    });
+    setSelectedFile(null);
+    setUploadError(null);
+  }
+}, [isUploadModalOpen]);
+
+// Handle file selection
+const handleFileChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const validTypes = [
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+    if (!validTypes.includes(file.type)) {
+      setUploadError("Please select a valid Excel file (.xls, .xlsx)");
+      setSelectedFile(null);
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit example
+      setUploadError("File is too large (max 10MB)");
+      setSelectedFile(null);
+      return;
+    }
+    setSelectedFile(file);
+    setUploadError(null);
+  }
+};
+
+// Handle upload submission
+const handleUploadSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!selectedFile) {
+    setUploadError("Please select an Excel file");
+    return;
+  }
+  
+  if (!uploadFormData.projectId) {
+    setUploadError("Please select a project");
+    return;
+  }
+  
+  // For State Coordinator → force their state
+  // if (userRole === 'State Coordinator' && !uploadFormData.stateId) {
+  //   setUploadError("State is required");
+  //   return;
+  // }
+  
+  // // For National/Admin → require state & hub
+  // if (['National Coordinator', 'ADMIN', 'SUPER ADMIN'].includes(userRole?.trim())) {
+  //   if (!uploadFormData.stateId) {
+  //     setUploadError("Please select a state");
+  //     return;
+  //   }
+  //   if (!uploadFormData.hubId) {
+  //     setUploadError("Please select a hub");
+  //     return;
+  //   }
+  // }
+
+  setIsUploading(true);
+  setUploadError(null);
+
+  try {
+    const formDataToSend = new FormData();
+    formDataToSend.append("file", selectedFile);
+    formDataToSend.append("projectId", uploadFormData.projectId);
+    
+    // Adjust field names based on your backend expectation
+    if (uploadFormData.stateId) {
+      formDataToSend.append("stateId", uploadFormData.stateId);
+    }
+    if (uploadFormData.hubId) {
+      formDataToSend.append("hubId", uploadFormData.hubId);  // or communityId / lgaId
+    }
+
+    // Example endpoint — change to your actual upload endpoint
+    const response = await api.post(
+      `${process.env.NEXT_PUBLIC_API_URL}/transactions/upload-bulk`,
+      formDataToSend,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    if (response.status >= 200 && response.status < 300) {
+      alert("Transactions uploaded successfully!");
+      
+      // Refresh the transaction list
+      // You can reuse your existing fetch logic or just trigger a refresh
+      const transactionsResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/transactions`);
+      // update transactions state...
+      setTransactions(
+        Array.isArray(transactionsResponse.data)
+          ? transactionsResponse.data
+          : (Array.isArray(transactionsResponse.data?.data)
+              ? transactionsResponse.data.data
+              : [])
+      );
+
+      // Close modal
+      setIsUploadModalOpen(false);
+    }
+  } catch (err) {
+    console.error("Bulk upload error:", err);
+    setUploadError(
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      "Failed to upload transactions. Please check the file format."
+    );
+  } finally {
+    setIsUploading(false);
+  }
+};
 
   // Fetch user role
   useEffect(() => {
@@ -112,32 +253,108 @@ const Transactions = () => {
   }, []);
 
   // Filter LGAs based on selected state
-  useEffect(() => {
-    if (!selectedState && !modalSelectedState) {
-      setLgas([]);
-      setSelectedLga("");
-      setModalSelectedLga("");
-      return;
-    }
+  // useEffect(() => {
+  //   if (!selectedState && !modalSelectedState) {
+  //     setLgas([]);
+  //     setSelectedLga("");
+  //     setModalSelectedLga("");
+  //     return;
+  //   }
 
-    const effectiveStateId = selectedState || modalSelectedState;
-    if (!effectiveStateId) return;
+  //   const effectiveStateId = selectedState || modalSelectedState;
+  //   if (!effectiveStateId) return;
 
-    const stateHubs = activeHubs.filter(hub => 
-      hub.state_info?.stateId?.toString() === effectiveStateId.toString()
-    );
+  //   const stateHubs = activeHubs.filter(hub => 
+  //     hub.state_info?.stateId?.toString() === effectiveStateId.toString()
+  //   );
     
-    const uniqueLgas = {};
-    stateHubs.forEach(hub => {
-      if (hub.lga_info?.lgaId && hub.lga_info?.lgaName) {
-        uniqueLgas[hub.lga_info.lgaId] = {
-          id: hub.lga_info.lgaId,
-          name: hub.lga_info.lgaName
-        };
-      }
-    });
-    setLgas(Object.values(uniqueLgas));
-  }, [selectedState, modalSelectedState, activeHubs]);
+  //   const uniqueLgas = {};
+  //   stateHubs.forEach(hub => {
+  //     if (hub.lga_info?.lgaId && hub.lga_info?.lgaName) {
+  //       uniqueLgas[hub.lga_info.lgaId] = {
+  //         id: hub.lga_info.lgaId,
+  //         name: hub.lga_info.lgaName
+  //       };
+  //     }
+  //   });
+  //   setLgas(Object.values(uniqueLgas));
+  // }, [selectedState, modalSelectedState, activeHubs]);
+
+
+  // For main filter dropdown
+useEffect(() => {
+  if (!selectedState) {
+    setFilterLgas([]);
+    setSelectedLga("");
+    return;
+  }
+
+  const stateHubs = activeHubs.filter(
+    hub => hub.state_info?.stateId?.toString() === selectedState.toString()
+  );
+
+  const uniqueLgas = {};
+  stateHubs.forEach(hub => {
+    if (hub.lga_info?.lgaId && hub.lga_info?.lgaName) {
+      uniqueLgas[hub.lga_info.lgaId] = {
+        id: hub.lga_info.lgaId,
+        name: hub.lga_info.lgaName
+      };
+    }
+  });
+
+  setFilterLgas(Object.values(uniqueLgas));
+}, [selectedState, activeHubs]);
+
+// For Add Transaction modal
+useEffect(() => {
+  if (!modalSelectedState) {
+    setAddModalLgas([]);
+    setModalSelectedLga("");
+    return;
+  }
+
+  const stateHubs = activeHubs.filter(
+    hub => hub.state_info?.stateId?.toString() === modalSelectedState.toString()
+  );
+
+  const uniqueLgas = {};
+  stateHubs.forEach(hub => {
+    if (hub.lga_info?.lgaId && hub.lga_info?.lgaName) {
+      uniqueLgas[hub.lga_info.lgaId] = {
+        id: hub.lga_info.lgaId,
+        name: hub.lga_info.lgaName
+      };
+    }
+  });
+
+  setAddModalLgas(Object.values(uniqueLgas));
+}, [modalSelectedState, activeHubs]);
+
+// For Upload Transactions modal
+// useEffect(() => {
+//   if (!uploadFormData.stateId) {
+//     setUploadModalLgas([]);
+//     setUploadFormData(prev => ({ ...prev, hubId: "" }));
+//     return;
+//   }
+
+//   const stateHubs = activeHubs.filter(
+//     hub => hub.state_info?.stateId?.toString() === uploadFormData.stateId.toString()
+//   );
+
+//   const uniqueLgas = {};
+//   stateHubs.forEach(hub => {
+//     if (hub.lga_info?.lgaId && hub.lga_info?.lgaName) {
+//       uniqueLgas[hub.lga_info.lgaId] = {
+//         id: hub.lga_info.lgaId,
+//         name: hub.lga_info.lgaName
+//       };
+//     }
+//   });
+
+//   setUploadModalLgas(Object.values(uniqueLgas));
+// }, [uploadFormData.stateId, activeHubs]);
 
   // Fetch transactions
   useEffect(() => {
@@ -536,8 +753,34 @@ const Transactions = () => {
   // Check if user is National Coordinator
   const isNationalCoordinator = userRole === 'National Coordinator';
 
-  // Beautified status badge function
- // Beautified status badge function - UPDATED COLORS
+ 
+  // Handle project update for existing transactions
+const handleUpdateProject = async (transactionId, projectId) => {
+  if (!projectId) return;
+  
+  try {
+    const response = await api.put(`/transactions/${transactionId}/project-type`, { 
+      projectId, 
+      transactionId: transactionId 
+    });
+    
+    if (response.status >= 200 && response.status < 300) {
+      // Refresh transactions
+      const transactionsResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/transactions`);
+      setTransactions(Array.isArray(transactionsResponse.data) 
+        ? transactionsResponse.data 
+        : (Array.isArray(transactionsResponse.data?.data) 
+          ? transactionsResponse.data.data 
+          : []));
+      setError(null);
+    }
+  } catch (error) {
+    console.error("Error updating project:", error);
+    setError(error.response?.data?.message || 'Failed to update project');
+  }
+};
+
+  
 // Simplified status badges
 const getStatusBadge = (status) => {
   const statusText = status?.toLowerCase();
@@ -555,18 +798,31 @@ const getStatusBadge = (status) => {
   return (
     <div className="col-lg-12">
       <div className="card">
-        <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-          <h5 className="card-title mb-3 mb-md-0">Transactions</h5>
-          {(['National Coordinator', 'State Coordinator', 'SUPER ADMIN', 'ADMIN'].includes(userRole?.trim())) && (
-            <button
-              className="btn btn-primary"
-              onClick={() => setIsModalOpen(true)}
-              disabled={loading}
-            >
-              Add Transaction
-            </button>
-          )}
-        </div>
+       <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+  <h5 className="card-title mb-3 mb-md-0">Transactions</h5>
+  
+  <div className="d-flex gap-2 flex-wrap">
+    {(['National Coordinator', 'State Coordinator', 'SUPER ADMIN', 'ADMIN'].includes(userRole?.trim())) && (
+      <>
+        <button
+          className="btn btn-primary"
+          onClick={() => setIsModalOpen(true)}
+          disabled={loading}
+        >
+          Add Transaction
+        </button>
+        
+        <button
+          className="btn btn-success"
+          onClick={() => setIsUploadModalOpen(true)}
+          disabled={loading}
+        >
+          Upload Transactions
+        </button>
+      </>
+    )}
+  </div>
+</div>
         
         <div className="card-body">
           {/* Filters Section */}
@@ -593,7 +849,7 @@ const getStatusBadge = (status) => {
             {(userRole === 'ADMIN' || userRole === 'National Coordinator' || userRole === 'State Coordinator') && (
               <div className="col-12 col-md-6 col-lg-3">
                 <label htmlFor="lgaFilter" className="form-label">Filter by Hub</label>
-                <select
+                {/* <select
                   id="lgaFilter"
                   className="form-select"
                   value={selectedLga}
@@ -606,7 +862,21 @@ const getStatusBadge = (status) => {
                       {lga.name}
                     </option>
                   ))}
-                </select>
+                </select> */}
+                <select
+  id="lgaFilter"
+  className="form-select"
+  value={selectedLga}
+  onChange={(e) => setSelectedLga(e.target.value)}
+  disabled={filterLgas.length === 0}
+>
+  <option value="">All Hubs</option>
+  {filterLgas.map(lga => (
+    <option key={lga.id} value={lga.id}>
+      {lga.name}
+    </option>
+  ))}
+</select>
               </div>
             )}
 
@@ -648,7 +918,7 @@ const getStatusBadge = (status) => {
               <button 
                 className="btn btn-secondary w-100"
                 onClick={() => {
-                  if (['National Coordinator', 'SUPER ADMIN', 'ADMIN'].includes(userRole?.trim())) {
+                  if (['National Coordinator', 'SUPER ADMIN', 'SUPER_ADMIN', 'ADMIN'].includes(userRole?.trim())) {
                     setSelectedState("");
                   }
                   setSelectedLga("");
@@ -722,11 +992,30 @@ const getStatusBadge = (status) => {
                           <td>
                             {getStatusBadge(transaction.transactionStatus)}
                           </td>
-                          <td>
+                          {/* <td>
                             <span className="badge bg-light text-dark">
                               {transaction.projects?.projectName || 'No Project'}
                             </span>
-                          </td>
+                          </td> */}
+                          <td>
+  {transaction.projects?.projectName ? (
+    transaction.projects.projectName
+  ) : (
+    <select
+      className="form-select form-select-sm"
+      value=""
+      onChange={(e) => handleUpdateProject(transaction.transactionId, e.target.value)}
+      disabled={loading}
+    >
+      <option value="">Select project...</option>
+      {projects.map(project => (
+        <option key={project.id} value={project.id}>
+          {project.name}
+        </option>
+      ))}
+    </select>
+  )}
+</td>
                           <td>{formatDate(transaction.created_at)}</td>
                           <td>
                             <div className="d-flex gap-2">
@@ -894,7 +1183,7 @@ const getStatusBadge = (status) => {
                 <div className="modal-body">
                   <div className="row g-3">
                     {/* State Selection for National Coordinator */}
-                    {isNationalCoordinator && (
+                    {/* {isNationalCoordinator && ( */}
                       <div className="col-md-6">
                         <label className="form-label">State *</label>
                         <select
@@ -916,28 +1205,28 @@ const getStatusBadge = (status) => {
                           ))}
                         </select>
                       </div>
-                    )}
+                    {/* // )} */}
 
                     {/* Hub Selection */}
                     <div className="col-md-6">
                       <label className="form-label">Hub *</label>
-                      <select
-                        className="form-select"
-                        value={modalSelectedLga}
-                        onChange={(e) => {
-                          setModalSelectedLga(e.target.value);
-                          setFormData(prev => ({ ...prev, hub: e.target.value, services: [] }));
-                        }}
-                        required
-                        disabled={isSubmitting || (isNationalCoordinator && !modalSelectedState)}
-                      >
-                        <option value="">Select Hub</option>
-                        {lgas.map(lga => (
-                          <option key={lga.id} value={lga.id}>
-                            {lga.name}
-                          </option>
-                        ))}
-                      </select>
+                    <select
+  className="form-select"
+  value={modalSelectedLga}
+  onChange={(e) => {
+    setModalSelectedLga(e.target.value);
+    setFormData(prev => ({ ...prev, hub: e.target.value, services: [] }));
+  }}
+  required
+  disabled={isSubmitting || (isNationalCoordinator && !modalSelectedState)}
+>
+  <option value="">Select Hub</option>
+  {addModalLgas.map(lga => (
+    <option key={lga.id} value={lga.id}>
+      {lga.name}
+    </option>
+  ))}
+</select>
                     </div>
 
                     {/* Project Selection */}
@@ -1504,6 +1793,151 @@ const getStatusBadge = (status) => {
           </div>
         </div>
       )}
+
+
+      {isUploadModalOpen && (
+  <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+    <div className="modal-dialog modal-dialog-centered modal-lg">
+      <motion.div
+        className="modal-content"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="modal-header bg-success text-white">
+          <h5 className="modal-title text-white">Upload Bulk Transactions (Excel)</h5>
+          <button
+            type="button"
+            className="btn-close btn-close-white"
+            onClick={() => setIsUploadModalOpen(false)}
+            disabled={isUploading}
+          />
+        </div>
+
+        <form onSubmit={handleUploadSubmit}>
+          <div className="modal-body">
+            <div className="row g-3">
+              {/* State */}
+              {/* {(['National Coordinator', 'SUPER ADMIN', 'SUPER_ADMIN', 'ADMIN'].includes(userRole?.trim())) && (
+                <div className="col-md-6">
+                  <label className="form-label">State *</label>
+                  <select
+                    className="form-select"
+                    value={uploadFormData.stateId}
+                    onChange={(e) => {
+                      setUploadFormData(prev => ({
+                        ...prev,
+                        stateId: e.target.value,
+                        hubId: "" // reset hub when state changes
+                      }));
+                    }}
+                    required
+                    disabled={isUploading}
+                  >
+                    <option value="">Select State</option>
+                    {states.map(state => (
+                      <option key={state.id} value={state.id}>
+                        {state.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )} */}
+
+              {/* Hub */}
+              {/* <div className="col-md-6">
+                <label className="form-label">Hub *</label>
+                <select
+  className="form-select"
+  value={uploadFormData.hubId}
+  onChange={(e) => setUploadFormData(prev => ({ ...prev, hubId: e.target.value }))}
+  required
+  disabled={isUploading || (['National Coordinator','SUPER ADMIN','ADMIN'].includes(userRole?.trim()) && !uploadFormData.stateId)}
+>
+  <option value="">Select Hub</option>
+  {uploadModalLgas.map(lga => (
+    <option key={lga.id} value={lga.id}>
+      {lga.name}
+    </option>
+  ))}
+</select>
+              </div> */}
+
+              {/* Project */}
+              <div className="col-md-6">
+                <label className="form-label">Project *</label>
+                <select
+                  className="form-select"
+                  value={uploadFormData.projectId}
+                  onChange={(e) => setUploadFormData(prev => ({ ...prev, projectId: e.target.value }))}
+                  required
+                  disabled={isUploading}
+                >
+                  <option value="">Select Project</option>
+                  {projects.map(project => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* File Upload */}
+              <div className="col-12">
+                <label className="form-label">Excel File *.xlsx / *.xls *</label>
+                <input
+                  type="file"
+                  className="form-control"
+                  accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={handleFileChange}
+                  disabled={isUploading}
+                />
+                <small className="text-muted mt-1 d-block">
+                  Maximum file size: 10MB
+                </small>
+                {selectedFile && (
+                  <div className="mt-2 text-success">
+                    Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </div>
+                )}
+              </div>
+
+              {uploadError && (
+                <div className="col-12">
+                  <div className="alert alert-danger">{uploadError}</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="modal-footer">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsUploadModalOpen(false)}
+              disabled={isUploading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-success"
+              disabled={isUploading || !selectedFile}
+            >
+              {isUploading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" />
+                  Uploading...
+                </>
+              ) : (
+                'Upload Transactions'
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  </div>
+)}
     </div>
   );
 };

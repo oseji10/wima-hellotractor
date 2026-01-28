@@ -88,8 +88,8 @@ const SignInLayer = () => {
                 <Icon 
                   icon="material-symbols:error-outline" 
                   className="alert-icon error" 
-                />
-                <p className="alert-message error">{error}</p>
+                />&nbsp;
+                {error}
               </div>
             )}
             {successMessage && (
@@ -97,8 +97,8 @@ const SignInLayer = () => {
                 <Icon 
                   icon="clarity:success-standard-line" 
                   className="alert-icon success" 
-                />
-                <p className="alert-message success">{successMessage}</p>
+                />&nbsp;
+                {successMessage}
               </div>
             )}
           </div>

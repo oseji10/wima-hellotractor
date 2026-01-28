@@ -251,7 +251,7 @@ const MasterLayout = ({ children }) => {
         <li key="transactions">
           <Link href="/dashboard/transactions">
             <Icon
-              icon="bitcoin-icons:transactions-filled"
+              icon="majesticons:clock-line"
               className="menu-icon"
             />
             <span>Bookings</span>
@@ -284,15 +284,15 @@ const MasterLayout = ({ children }) => {
             <span>Equipment</span>
           </Link>
         </li>,
-        <li key="bookings">
-          <Link href="/dashboard/transactions">
-            <Icon
-              icon="majesticons:clock-line"
-              className="menu-icon"
-            />
-            <span>Bookings</span>
-          </Link>
-        </li>,
+        // <li key="bookings">
+        //   <Link href="/dashboard/transactions">
+        //     <Icon
+        //       icon="majesticons:clock-line"
+        //       className="menu-icon"
+        //     />
+        //     <span>Bookings</span>
+        //   </Link>
+        // </li>,
         // <li key="payments">
         //   <Link href="/dashboard/payments">
         //     <Icon
