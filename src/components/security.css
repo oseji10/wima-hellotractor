@@ -1,0 +1,92 @@
+/* =========================================================================
+   Security & Incident Management — scoped UI layer (.sec-)
+   Consistent with the other modules. Import once.
+   ========================================================================= */
+
+.sec-scope {
+  --sec-border: #e6e8ee;
+  --sec-text-muted: #667085;
+  --sec-bg-soft: #f9fafb;
+  --sec-primary: var(--bs-primary, #4f46e5);
+}
+
+.sec-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.sec-page-head h4 { margin: 0; font-weight: 700; }
+.sec-sub { color: var(--sec-text-muted); font-size: .9rem; margin-top: .15rem; }
+
+/* ---- KPI strip ---- */
+.sec-kpis { display: grid; gap: .9rem; margin-bottom: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.sec-kpi { background: #fff; border: 1px solid var(--sec-border); border-radius: 14px; padding: 1rem 1.1rem; }
+.sec-kpi-icon { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: .6rem; background: var(--sec-accent-soft, #eef2ff); color: var(--sec-accent, #4f46e5); }
+.sec-kpi-value { font-size: 1.45rem; font-weight: 700; line-height: 1.1; }
+.sec-kpi-label { color: var(--sec-text-muted); font-size: .82rem; margin-top: .15rem; }
+.sec-kpi-sub { font-size: .74rem; margin-top: .35rem; color: var(--sec-text-muted); }
+
+/* ---- Tabs ---- */
+.sec-tabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--sec-border); margin-bottom: 1.25rem; overflow-x: auto; }
+.sec-tab { border: none; background: none; padding: .65rem 1rem; font-size: .9rem; font-weight: 500; color: var(--sec-text-muted); border-bottom: 2px solid transparent; white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; gap: .35rem; }
+.sec-tab:hover { color: var(--sec-primary); }
+.sec-tab.is-active { color: var(--sec-primary); border-bottom-color: var(--sec-primary); }
+.sec-tab--locked { color: #b42318; }
+.sec-tab--locked.is-active { border-bottom-color: #b42318; }
+
+/* ---- Cards / tables ---- */
+.sec-card { background: #fff; border: 1px solid var(--sec-border); border-radius: 14px; overflow: hidden; }
+.sec-card-pad { padding: 1.1rem 1.25rem; }
+.sec-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .85rem; gap: .75rem; flex-wrap: wrap; }
+.sec-panel-head h6 { margin: 0; font-weight: 700; }
+
+.sec-table { width: 100%; margin: 0; }
+.sec-table thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--sec-text-muted); font-weight: 600; border-bottom: 1px solid var(--sec-border); padding: .7rem 1rem; background: var(--sec-bg-soft); white-space: nowrap; }
+.sec-table tbody td { padding: .75rem 1rem; border-bottom: 1px solid var(--sec-border); vertical-align: middle; }
+.sec-table tbody tr:last-child td { border-bottom: none; }
+.sec-table tbody tr.clickable { cursor: pointer; }
+.sec-table tbody tr.clickable:hover { background: var(--sec-bg-soft); }
+.sec-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- Pills ---- */
+.sec-pill { display: inline-flex; align-items: center; gap: .35rem; font-size: .73rem; font-weight: 600; padding: .2rem .55rem; border-radius: 999px; text-transform: capitalize; }
+.sec-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.sec-pill--green  { background: #ecfdf3; color: #027a48; }
+.sec-pill--gray   { background: #f2f4f7; color: #475467; }
+.sec-pill--amber  { background: #fffaeb; color: #b54708; }
+.sec-pill--red    { background: #fef3f2; color: #b42318; }
+.sec-pill--blue   { background: #eff8ff; color: #175cd3; }
+.sec-pill--purple { background: #f4f3ff; color: #5925dc; }
+
+/* severity / band swatches */
+.sec-sev { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: .4rem; vertical-align: -1px; }
+.sec-sev--low { background: #98a2b3; }
+.sec-sev--medium { background: #f79009; }
+.sec-sev--high { background: #f04438; }
+.sec-sev--critical { background: #7a271a; }
+
+/* ---- Drawer ---- */
+.sec-overlay { position: fixed; inset: 0; background: rgba(16,24,40,.45); z-index: 1050; }
+.sec-drawer { position: fixed; top: 0; right: 0; height: 100%; width: 600px; max-width: 95vw; background: #fff; z-index: 1051; box-shadow: -8px 0 28px rgba(16,24,40,.12); display: flex; flex-direction: column; animation: secSlide .2s ease; }
+.sec-drawer-head { padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--sec-border); display: flex; justify-content: space-between; gap: 1rem; }
+.sec-drawer-body { padding: 1.1rem 1.25rem; overflow-y: auto; }
+@keyframes secSlide { from { transform: translateX(20px); opacity: .6; } to { transform: translateX(0); opacity: 1; } }
+
+/* ---- Timeline ---- */
+.sec-timeline { position: relative; padding-left: 1.25rem; }
+.sec-timeline::before { content: ""; position: absolute; left: 5px; top: 4px; bottom: 4px; width: 2px; background: var(--sec-border); }
+.sec-tl-item { position: relative; padding: 0 0 1rem 0; }
+.sec-tl-item::before { content: ""; position: absolute; left: -1.25rem; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--sec-primary); box-shadow: 0 0 0 3px #fff; }
+
+/* ---- Risk map ---- */
+.sec-risk-row { display: grid; grid-template-columns: 1.4fr 70px 1fr 90px; gap: .75rem; align-items: center; padding: .65rem 0; border-bottom: 1px solid var(--sec-border); }
+.sec-risk-bar { height: 8px; border-radius: 999px; background: #eef0f4; overflow: hidden; }
+.sec-risk-bar > span { display: block; height: 100%; border-radius: 999px; }
+.sec-band--low > span { background: #98a2b3; }
+.sec-band--medium > span { background: #f79009; }
+.sec-band--high > span { background: #f04438; }
+.sec-band--critical > span { background: #7a271a; }
+
+/* ---- Confidential banner ---- */
+.sec-confidential { border: 1px solid #fecdca; background: #fffbfa; border-radius: 14px; padding: 1rem 1.15rem; margin-bottom: 1.1rem; display: flex; gap: .75rem; align-items: flex-start; }
+.sec-confidential .ic { color: #b42318; flex: none; }
+.sec-locked-state { text-align: center; padding: 3rem 1rem; color: var(--sec-text-muted); }
+
+.sec-empty { text-align: center; color: var(--sec-text-muted); padding: 2rem 1rem; font-size: .9rem; }
+.sec-field-label { font-size: .78rem; color: var(--sec-text-muted); margin-bottom: .2rem; display: block; }

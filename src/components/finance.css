@@ -1,0 +1,120 @@
+/* =========================================================================
+   Finance & Treasury — scoped UI layer (.fin-)
+   Sits on top of Bootstrap; consistent with asset-management.css (.am-).
+   Import once (e.g. in FinanceTreasury.jsx).
+   ========================================================================= */
+
+.fin-scope {
+  --fin-border: #e6e8ee;
+  --fin-text-muted: #667085;
+  --fin-bg-soft: #f9fafb;
+  --fin-primary: var(--bs-primary, #4f46e5);
+}
+
+/* ---- Page head ---- */
+.fin-page-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;
+}
+.fin-page-head h4 { margin: 0; font-weight: 700; }
+.fin-sub { color: var(--fin-text-muted); font-size: .9rem; margin-top: .15rem; }
+
+/* ---- KPI strip ---- */
+.fin-kpis {
+  display: grid; gap: .9rem; margin-bottom: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.fin-kpi {
+  background: #fff; border: 1px solid var(--fin-border); border-radius: 14px;
+  padding: 1rem 1.1rem; position: relative; overflow: hidden;
+}
+.fin-kpi-icon {
+  width: 38px; height: 38px; border-radius: 10px; display: inline-flex;
+  align-items: center; justify-content: center; margin-bottom: .6rem;
+  background: var(--fin-accent-soft, #eef2ff); color: var(--fin-accent, #4f46e5);
+}
+.fin-kpi-value { font-size: 1.45rem; font-weight: 700; line-height: 1.1; }
+.fin-kpi-label { color: var(--fin-text-muted); font-size: .82rem; margin-top: .15rem; }
+.fin-kpi-sub { font-size: .74rem; margin-top: .35rem; color: var(--fin-text-muted); }
+
+/* ---- Tabs ---- */
+.fin-tabs {
+  display: flex; gap: .25rem; border-bottom: 1px solid var(--fin-border);
+  margin-bottom: 1.25rem; overflow-x: auto;
+}
+.fin-tab {
+  border: none; background: none; padding: .65rem 1rem; font-size: .9rem;
+  font-weight: 500; color: var(--fin-text-muted); border-bottom: 2px solid transparent;
+  white-space: nowrap; cursor: pointer;
+}
+.fin-tab:hover { color: var(--fin-primary); }
+.fin-tab.is-active { color: var(--fin-primary); border-bottom-color: var(--fin-primary); }
+
+/* ---- Cards / tables ---- */
+.fin-card {
+  background: #fff; border: 1px solid var(--fin-border);
+  border-radius: 14px; overflow: hidden;
+}
+.fin-card-pad { padding: 1.1rem 1.25rem; }
+.fin-panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: .85rem; gap: .75rem;
+}
+.fin-panel-head h6 { margin: 0; font-weight: 700; }
+
+.fin-table { width: 100%; margin: 0; }
+.fin-table thead th {
+  font-size: .72rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--fin-text-muted); font-weight: 600; border-bottom: 1px solid var(--fin-border);
+  padding: .7rem 1rem; background: var(--fin-bg-soft); white-space: nowrap;
+}
+.fin-table tbody td { padding: .75rem 1rem; border-bottom: 1px solid var(--fin-border); vertical-align: middle; }
+.fin-table tbody tr:last-child td { border-bottom: none; }
+.fin-table tbody tr.clickable { cursor: pointer; }
+.fin-table tbody tr.clickable:hover { background: var(--fin-bg-soft); }
+.fin-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- Pills ---- */
+.fin-pill {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-size: .73rem; font-weight: 600; padding: .2rem .55rem; border-radius: 999px;
+  text-transform: capitalize;
+}
+.fin-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.fin-pill--green  { background: #ecfdf3; color: #027a48; }
+.fin-pill--gray   { background: #f2f4f7; color: #475467; }
+.fin-pill--amber  { background: #fffaeb; color: #b54708; }
+.fin-pill--red    { background: #fef3f2; color: #b42318; }
+.fin-pill--blue   { background: #eff8ff; color: #175cd3; }
+.fin-pill--purple { background: #f4f3ff; color: #5925dc; }
+
+/* ---- Share breakdown grid ---- */
+.fin-share-grid {
+  display: grid; gap: .75rem; margin: .25rem 0 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+.fin-share {
+  border: 1px solid var(--fin-border); border-radius: 12px; padding: .8rem .9rem;
+  background: #fff;
+}
+.fin-share .v { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fin-share .l { font-size: .76rem; color: var(--fin-text-muted); margin-top: .1rem; }
+
+/* ---- Scheme editor ---- */
+.fin-scheme-grid {
+  display: grid; gap: .85rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.fin-field label { font-size: .78rem; color: var(--fin-text-muted); margin-bottom: .2rem; display: block; }
+.fin-sum-note { font-size: .8rem; margin-top: .5rem; }
+.fin-sum-ok { color: #027a48; }
+.fin-sum-warn { color: #b54708; }
+
+/* ---- Empty + bars ---- */
+.fin-empty { text-align: center; color: var(--fin-text-muted); padding: 2rem 1rem; font-size: .9rem; }
+.fin-progress { height: 7px; background: #eef0f4; border-radius: 999px; overflow: hidden; }
+.fin-progress > span { display: block; height: 100%; background: var(--fin-primary); border-radius: 999px; }
+
+/* ---- Drawer / modal helpers reuse Bootstrap modal ---- */
+.fin-line-row { display: grid; grid-template-columns: 1fr 90px 120px 120px 36px; gap: .5rem; align-items: end; margin-bottom: .5rem; }
+@media (max-width: 640px) { .fin-line-row { grid-template-columns: 1fr 1fr; } }

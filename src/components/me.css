@@ -1,0 +1,77 @@
+/* =========================================================================
+   Monitoring & Evaluation — scoped UI layer (.me-)
+   Consistent with asset-management.css / finance.css. Import once.
+   ========================================================================= */
+
+.me-scope {
+  --me-border: #e6e8ee;
+  --me-text-muted: #667085;
+  --me-bg-soft: #f9fafb;
+  --me-primary: var(--bs-primary, #4f46e5);
+}
+
+.me-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.me-page-head h4 { margin: 0; font-weight: 700; }
+.me-sub { color: var(--me-text-muted); font-size: .9rem; margin-top: .15rem; }
+
+/* ---- Tabs ---- */
+.me-tabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--me-border); margin-bottom: 1.25rem; overflow-x: auto; }
+.me-tab { border: none; background: none; padding: .65rem 1rem; font-size: .9rem; font-weight: 500; color: var(--me-text-muted); border-bottom: 2px solid transparent; white-space: nowrap; cursor: pointer; }
+.me-tab:hover { color: var(--me-primary); }
+.me-tab.is-active { color: var(--me-primary); border-bottom-color: var(--me-primary); }
+
+/* ---- Summary chips ---- */
+.me-summary { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 1.25rem; }
+.me-chip { background: #fff; border: 1px solid var(--me-border); border-radius: 14px; padding: .9rem 1rem; display: flex; align-items: center; gap: .75rem; }
+.me-chip-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.me-chip .v { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+.me-chip .l { font-size: .78rem; color: var(--me-text-muted); }
+
+/* ---- Cards / tables ---- */
+.me-card { background: #fff; border: 1px solid var(--me-border); border-radius: 14px; overflow: hidden; }
+.me-card-pad { padding: 1.1rem 1.25rem; }
+.me-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .85rem; gap: .75rem; }
+.me-panel-head h6 { margin: 0; font-weight: 700; }
+
+.me-table { width: 100%; margin: 0; }
+.me-table thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--me-text-muted); font-weight: 600; border-bottom: 1px solid var(--me-border); padding: .7rem 1rem; background: var(--me-bg-soft); white-space: nowrap; }
+.me-table tbody td { padding: .75rem 1rem; border-bottom: 1px solid var(--me-border); vertical-align: middle; }
+.me-table tbody tr:last-child td { border-bottom: none; }
+.me-table tbody tr.clickable { cursor: pointer; }
+.me-table tbody tr.clickable:hover { background: var(--me-bg-soft); }
+.me-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- KPI scorecard cards ---- */
+.me-kpis { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.me-kpi { background: #fff; border: 1px solid var(--me-border); border-radius: 14px; padding: 1.1rem 1.2rem; border-left: 4px solid var(--me-accent, #98a2b3); }
+.me-kpi-name { font-weight: 600; font-size: .92rem; }
+.me-kpi-level { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--me-text-muted); }
+.me-kpi-value { font-size: 1.7rem; font-weight: 700; margin-top: .5rem; line-height: 1; }
+.me-kpi-target { font-size: .8rem; color: var(--me-text-muted); margin-top: .2rem; }
+.me-progress { height: 8px; background: #eef0f4; border-radius: 999px; overflow: hidden; margin-top: .7rem; }
+.me-progress > span { display: block; height: 100%; border-radius: 999px; background: var(--me-accent, #98a2b3); }
+
+/* ---- Status pills ---- */
+.me-pill { display: inline-flex; align-items: center; gap: .35rem; font-size: .73rem; font-weight: 600; padding: .2rem .55rem; border-radius: 999px; text-transform: capitalize; }
+.me-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.me-pill--green  { background: #ecfdf3; color: #027a48; }
+.me-pill--amber  { background: #fffaeb; color: #b54708; }
+.me-pill--red    { background: #fef3f2; color: #b42318; }
+.me-pill--gray   { background: #f2f4f7; color: #475467; }
+.me-pill--blue   { background: #eff8ff; color: #175cd3; }
+
+/* status accents */
+.me-acc-on_track  { --me-accent: #12b76a; }
+.me-acc-at_risk   { --me-accent: #f79009; }
+.me-acc-off_track { --me-accent: #f04438; }
+.me-acc-no_data   { --me-accent: #98a2b3; }
+
+/* ---- Trend mini bars ---- */
+.me-trend { display: flex; align-items: flex-end; gap: 4px; height: 46px; margin-top: .5rem; }
+.me-trend-bar { flex: 1; background: var(--me-accent, #cbd5e1); border-radius: 3px 3px 0 0; min-height: 3px; opacity: .85; }
+
+/* ---- Form builder ---- */
+.me-field-row { display: grid; grid-template-columns: 1fr 150px 90px 36px; gap: .5rem; align-items: end; margin-bottom: .5rem; }
+@media (max-width: 640px) { .me-field-row { grid-template-columns: 1fr 1fr; } }
+.me-empty { text-align: center; color: var(--me-text-muted); padding: 2rem 1rem; font-size: .9rem; }
+.me-field-label { font-size: .78rem; color: var(--me-text-muted); margin-bottom: .2rem; display: block; }

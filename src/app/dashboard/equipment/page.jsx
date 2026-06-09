@@ -1,6 +1,7 @@
 import ActiveLocations from "@/components/ActiveLocations";
 import Breadcrumb from "@/components/Breadcrumb";
 import EquipmentTable from "@/components/Equipment";
+import EquipmentManagement from "@/components/EquipmentManagement";
 import MasterLayout from "@/masterLayout/MasterLayout";
 
 export const metadata = {
@@ -18,7 +19,8 @@ const Page = () => {
         <Breadcrumb title='Equipment' />
 
         {/* TableDataLayer */}
-        <EquipmentTable />
+        {/* <EquipmentTable /> */}
+        <EquipmentManagement/>
       </MasterLayout>
     </>
   );

@@ -284,6 +284,43 @@ const MasterLayout = ({ children }) => {
             <span>Equipment</span>
           </Link>
         </li>,
+         <li key="finance">
+          <Link href="/dashboard/finance">
+            <Icon
+              icon="mdi:finance"
+              className="menu-icon"
+            />
+            <span>Finance</span>
+          </Link>
+        </li>,
+
+         <li key="m&e">
+          <Link href="/dashboard/m&e">
+            <Icon
+              icon="carbon:cloud-monitoring"
+              className="menu-icon"
+            />
+            <span>M&E</span>
+          </Link>
+        </li>,
+        <li key="hr">
+          <Link href="/dashboard/hr">
+            <Icon
+              icon="fa7-solid:people-line"
+              className="menu-icon"
+            />
+            <span>Human Resources</span>
+          </Link>
+        </li>,
+         <li key="security-and-safeguarding">
+          <Link href="/dashboard/security-and-safeguarding">
+            <Icon
+              icon="ic:outline-security"
+              className="menu-icon"
+            />
+            <span>Security & Safeguarding</span>
+          </Link>
+        </li>,
         // <li key="bookings">
         //   <Link href="/dashboard/transactions">
         //     <Icon
