@@ -36,21 +36,42 @@ interface ActiveHub {
   };
 }
 
+interface CLSubCLData {
+  userId: number;
+  fullname: string;
+  phoneNumber: string;
+  email: string;
+  age: string;
+  gender: string;
+  stateId: string;
+  lgaId: string;
+  stateName?: string;
+  lgaName?: string;
+  mspCategory: string;
+  year: string;
+  code: string;
+  verifiedBy?: string;
+}
+
 const FarmerRegistration = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingStates, setLoadingStates] = useState(false);
   const [checkingPhone, setCheckingPhone] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
   const [activeHubs, setActiveHubs] = useState<ActiveHub[]>([]);
   const [states, setStates] = useState<State[]>([]);
   const [lgas, setLgas] = useState<LGA[]>([]);
   const [isExistingFarmer, setIsExistingFarmer] = useState(false);
+  const [isCLSubCL, setIsCLSubCL] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  const [clSubCLData, setClSubCLData] = useState<CLSubCLData | null>(null);
+  const [verificationInput, setVerificationInput] = useState('');
   
-  // Static list of mechanized services
   const services: Service[] = [
     { id: 'threshing', name: 'Threshing', icon: 'mdi:grain' },
     { id: 'spraying', name: 'Spraying', icon: 'mdi:spray' },
@@ -82,7 +103,6 @@ const FarmerRegistration = () => {
   
   const router = useRouter();
 
-  // Load States from active hubs initially
   useEffect(() => {
     const fetchActiveHubs = async () => {
       setLoadingStates(true);
@@ -115,7 +135,6 @@ const FarmerRegistration = () => {
     fetchActiveHubs();
   }, []);
 
-  // Extract unique LGAs for the selected state from activeHubs
   useEffect(() => {
     if (!formData.stateId) {
       setLgas([]);
@@ -138,13 +157,12 @@ const FarmerRegistration = () => {
     });
     setLgas(Object.values(uniqueLgas));
     
-    // Reset LGA selection when state changes
     setFormData(prev => ({ ...prev, lgaId: '' }));
   }, [formData.stateId, activeHubs]);
 
-  // Validate phone number on change (after 11 digits) and prefill if existing farmer
+  // Only check for existing farmer if verified
   useEffect(() => {
-    if (formData.phoneNumber.length === 11) {
+    if (isVerified && formData.phoneNumber.length === 11) {
       (async () => {
         try {
           setCheckingPhone(true);
@@ -158,7 +176,7 @@ const FarmerRegistration = () => {
               gender: res.data.gender || "",
             }));
             setIsExistingFarmer(true);
-            setMessage("Existing user found. Details prefilled (read-only).");
+            setMessage("Existing farmer found. Details prefilled (read-only).");
           } else {
             setFormData((prev) => ({
               ...prev,
@@ -168,7 +186,7 @@ const FarmerRegistration = () => {
               gender: "",
             }));
             setIsExistingFarmer(false);
-            setMessage("New user — please enter your details (will be registered on submit).");
+            setMessage("New farmer — please enter the details.");
           }
         } catch (err) {
           setMessage("Could not validate number.");
@@ -178,27 +196,93 @@ const FarmerRegistration = () => {
           setCheckingPhone(false);
         }
       })();
-    } else {
-      if (formData.phoneNumber.length < 11 && formData.phoneNumber.length > 0) {
-        setMessage("");
-        setIsExistingFarmer(false);
-        setFormData((prev) => ({
-          ...prev,
-          fullname: "",
-          email: "",
-          age: "",
-          gender: "",
-        }));
-      }
+    } else if (isVerified && formData.phoneNumber.length < 11 && formData.phoneNumber.length > 0) {
+      setMessage("");
+      setIsExistingFarmer(false);
+      setFormData((prev) => ({
+        ...prev,
+        fullname: "",
+        email: "",
+        age: "",
+        gender: "",
+      }));
     }
-  }, [formData.phoneNumber]);
+  }, [formData.phoneNumber, isVerified]);
+
+  const handleVerifyCLSubCL = async () => {
+    if (!verificationInput.trim()) {
+      setError('Please enter your unique code or phone number.');
+      return;
+    }
+
+    setVerifyingCode(true);
+    setError(null);
+    setMessage('');
+
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/verify-cl-subcl`,
+        { identifier: verificationInput.trim() }
+      );
+
+      if (response.data.success && response.data.data) {
+        const data = response.data.data;
+        setClSubCLData(data);
+        setIsCLSubCL(true);
+        setIsVerified(true);
+        
+        const verifiedBy = data.verifiedBy === 'code' ? 'unique code' : 'phone number';
+        setMessage(`✓ CL/SubCL verified successfully via ${verifiedBy}. You can now fill in the farmer details.`);
+        setSuccessMessage(`CL/SubCL verification successful via ${verifiedBy}!`);
+      }
+    } catch (error: any) {
+      console.error('Verification failed:', error);
+      
+      // Handle specific error message
+      const errorMessage = error.response?.data?.message || 'Verification failed. Please check your unique code or phone number.';
+      
+      // Check if the error is about user not being CL/SubCL
+      if (errorMessage.includes('not registered as CL or SubCL')) {
+        setError('This phone number belongs to a user but they are not registered as CL or SubCL. Please contact support.');
+      } else {
+        setError(errorMessage);
+      }
+      
+      setIsCLSubCL(false);
+      setIsVerified(false);
+      setClSubCLData(null);
+    } finally {
+      setVerifyingCode(false);
+    }
+  };
+
+  const handleResetVerification = () => {
+    setIsCLSubCL(false);
+    setIsVerified(false);
+    setClSubCLData(null);
+    setVerificationInput('');
+    setMessage('');
+    setError(null);
+    setSuccessMessage(null);
+    // Reset form data when verification is reset
+    setFormData({
+      fullname: '',
+      phoneNumber: '',
+      age: '',
+      stateId: '',
+      lgaId: '',
+      email: '',
+      gender: '',
+      mechanizedServices: [],
+    });
+    setIsExistingFarmer(false);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (error) setError(null);
     if (message) setMessage('');
-    // Clear field-specific errors when user types
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: [] }));
     }
@@ -223,6 +307,12 @@ const FarmerRegistration = () => {
     setFieldErrors({});
 
     try {
+      if (!isVerified || !clSubCLData) {
+        setError('Please verify your CL/SubCL identity before submitting.');
+        setIsSubmitting(false);
+        return;
+      }
+
       if (!formData.fullname || !formData.phoneNumber || !formData.age || !formData.stateId || !formData.lgaId) {
         setError('Please fill in all required fields');
         setIsSubmitting(false);
@@ -238,6 +328,10 @@ const FarmerRegistration = () => {
         email: formData.email || undefined,
         gender: formData.gender || undefined,
         mechanizedServices: formData.mechanizedServices,
+        addedBy: clSubCLData.userId,
+        clSubCLCode: clSubCLData.code,
+        registeredBy: clSubCLData.fullname,
+        mspCategory: clSubCLData.mspCategory,
       };
 
       console.log('Sending payload:', payload);
@@ -248,14 +342,25 @@ const FarmerRegistration = () => {
         { withCredentials: true }
       );
 
-      setSuccessMessage('Registration successful! Redirecting...');
+      setSuccessMessage('Farmer registration successful! Redirecting...');
       setMessage('');
       
-     
+      setFormData({
+        fullname: '',
+        phoneNumber: '',
+        age: '',
+        stateId: '',
+        lgaId: '',
+        email: '',
+        gender: '',
+        mechanizedServices: [],
+      });
+      
+      handleResetVerification();
+      
     } catch (error: any) {
       console.error('Registration failed:', error);
       
-      // Handle validation errors from backend
       if (error.response?.data?.errors) {
         const errors = error.response.data.errors;
         setFieldErrors(errors);
@@ -283,26 +388,23 @@ const FarmerRegistration = () => {
     }
   }, [error, successMessage]);
 
-  // Helper to check if a field has an error
   const hasFieldError = (fieldName: string): boolean => {
     return fieldErrors[fieldName] && fieldErrors[fieldName].length > 0;
   };
 
-  // Helper to get field error message
   const getFieldError = (fieldName: string): string => {
     return fieldErrors[fieldName]?.[0] || '';
   };
 
   return (
-    <section className='auth-container'>
-      <div className='auth-form'>
-        <div className='form-wrapper'>
-          {/* Decorative gradient orbs */}
-          <div className="gradient-orb"></div>
-          <div className="gradient-orb-2"></div>
+    <section className="auth-container">
+      <div className="auth-form">
+        <div className="form-wrapper">
+          <div className="gradient-orb" />
+          <div className="gradient-orb-2" />
 
           <div className="form-header">
-            <Link href='/' className='logo-link'>
+            <Link href="/" className="logo-link">
               <Image
                 src="/assets/images/wima-logo.svg"
                 alt="Home Icon"
@@ -315,8 +417,10 @@ const FarmerRegistration = () => {
               <div className="title-badge">
                 <span className="badge">New Farmer Registration</span>
               </div>
-              <p className='form-subtitle'>
-                Join our platform and access modern mechanized farming services
+              <p className="form-subtitle">
+                {isVerified 
+                  ? "Fill in the farmer's details below" 
+                  : "Verify your CL/SubCL identity to start registering farmers"}
               </p>
             </div>
           </div>
@@ -341,266 +445,350 @@ const FarmerRegistration = () => {
               </div>
             )}
             {message && (
-              <div className={`alert ${isExistingFarmer ? 'success' : 'info'}`}>
+              <div className={`alert ${isExistingFarmer ? "success" : "info"}`}>
                 <Icon 
                   icon={isExistingFarmer ? "clarity:success-standard-line" : "mdi:information"} 
-                  className={`alert-icon ${isExistingFarmer ? 'success' : 'info'}`} 
+                  className={`alert-icon ${isExistingFarmer ? "success" : "info"}`} 
                 />
                 <span className="alert-text">{message}</span>
               </div>
             )}
           </div>
 
-          <form onSubmit={submitForm}>
-            <div className="form-grid">
-              {/* Phone Number - Primary identifier */}
-              <div className={`input-field ${focusedField === 'phoneNumber' ? 'focused' : ''} ${hasFieldError('phoneNumber') ? 'has-error' : ''}`}>
-                <span className='input-icon'>
-                  <Icon icon='mdi:phone' />
+          {/* Verification Section - Always visible at the top */}
+          <div className="verification-section">
+            <div className="verification-header">
+              <Icon icon="mdi:shield-check" className="verification-icon" />
+              <span className="verification-title">CL/SubCL Verification</span>
+            </div>
+            
+            <div className="verification-info">
+              <Icon icon="mdi:information-outline" />
+              <span>Enter your unique code (8 characters) OR your phone number to verify your identity.</span>
+            </div>
+
+            <div className="verification-input-group">
+              <div className={`input-field ${focusedField === "verification" ? "focused" : ""}`}>
+                <span className="input-icon">
+                  <Icon icon="mdi:key" />
                 </span>
                 <input
-                  type='tel'
-                  name='phoneNumber'
-                  className='form-input'
-                  placeholder='Phone Number (11 digits)'
-                  value={formData.phoneNumber}
-                  onChange={handleChange}
-                  onFocus={() => setFocusedField('phoneNumber')}
+                  type="text"
+                  className="form-input"
+                  placeholder="Enter Unique Code or Phone Number"
+                  value={verificationInput}
+                  onChange={(e) => setVerificationInput(e.target.value)}
+                  onFocus={() => setFocusedField("verification")}
                   onBlur={() => setFocusedField(null)}
-                  disabled={isSubmitting || checkingPhone}
-                  maxLength={11}
-                  required
+                  disabled={isSubmitting || verifyingCode || isVerified}
                 />
-                {checkingPhone && (
-                  <span className="input-loading">
-                    <Icon icon="mdi:loading" className="spinning" />
-                  </span>
-                )}
-                <span className="input-highlight"></span>
-                {hasFieldError('phoneNumber') && (
-                  <span className="field-error">{getFieldError('phoneNumber')}</span>
+                <span className="input-highlight" />
+              </div>
+              <div className="verification-actions">
+                {!isVerified ? (
+                  <button
+                    type="button"
+                    className="verify-button"
+                    onClick={handleVerifyCLSubCL}
+                    disabled={verifyingCode || isSubmitting || !verificationInput.trim()}
+                  >
+                    {verifyingCode ? (
+                      <>
+                        <span className="spinner-small" />
+                        Verifying...
+                      </>
+                    ) : (
+                      <>
+                        <Icon icon="mdi:check-circle" />
+                        Verify
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="reset-button"
+                    onClick={handleResetVerification}
+                    disabled={isSubmitting}
+                  >
+                    <Icon icon="mdi:close-circle" />
+                    Reset
+                  </button>
                 )}
               </div>
+            </div>
 
-              {/* Full Name */}
-              <div className={`input-field ${focusedField === 'fullname' ? 'focused' : ''} ${hasFieldError('fullName') ? 'has-error' : ''}`}>
-                <span className='input-icon'>
-                  <Icon icon='mdi:user' />
-                </span>
-                <input
-                  type='text'
-                  name='fullname'
-                  className='form-input'
-                  placeholder='Full Name'
-                  value={formData.fullname}
-                  onChange={handleChange}
-                  onFocus={() => setFocusedField('fullname')}
-                  onBlur={() => setFocusedField(null)}
-                  disabled={isSubmitting || isExistingFarmer}
-                  required
-                />
-                <span className="input-highlight"></span>
-                {hasFieldError('fullName') && (
-                  <span className="field-error">{getFieldError('fullName')}</span>
-                )}
+            {isVerified && clSubCLData && (
+              <div className="verification-status success">
+                <Icon icon="mdi:check-circle" />
+                <div>
+                  <strong>Verified as:</strong> {clSubCLData.mspCategory} - {clSubCLData.fullname}
+                  <br />
+                  <span className="code-display">Code: {clSubCLData.code}</span>
+                  {clSubCLData.verifiedBy && (
+                    <span className="verified-by-display">
+                      {clSubCLData.verifiedBy === "code" ? "✓ Verified by code" : "✓ Verified by phone"}
+                    </span>
+                  )}
+                  {/* {clSubCLData.userId && (
+                    <>
+                      <br />
+                      <span className="user-id-display">User ID: {clSubCLData.userId}</span>
+                    </>
+                  )} */}
+                </div>
               </div>
+            )}
+          </div>
 
-              {/* Email */}
-              <div className={`input-field ${focusedField === 'email' ? 'focused' : ''} ${hasFieldError('email') ? 'has-error' : ''}`}>
-                <span className='input-icon'>
-                  <Icon icon='mdi:email' />
-                </span>
-                <input
-                  type='email'
-                  name='email'
-                  className='form-input'
-                  placeholder='Email Address'
-                  value={formData.email}
-                  onChange={handleChange}
-                  onFocus={() => setFocusedField('email')}
-                  onBlur={() => setFocusedField(null)}
-                  disabled={isSubmitting || isExistingFarmer}
-                />
-                <span className="input-highlight"></span>
-                {hasFieldError('email') && (
-                  <span className="field-error">{getFieldError('email')}</span>
-                )}
-              </div>
-
-              {/* Age and Gender in a row */}
-              <div className="input-row">
-                <div className={`input-field half ${focusedField === 'age' ? 'focused' : ''} ${hasFieldError('age') ? 'has-error' : ''}`}>
-                  <span className='input-icon'>
-                    <Icon icon='mdi:calendar' />
+          {/* Farmer Registration Form - Only shown when verified */}
+          {isVerified ? (
+            <form onSubmit={submitForm}>
+              <div className="form-grid">
+                <div className={`input-field ${focusedField === "phoneNumber" ? "focused" : ""} ${hasFieldError("phoneNumber") ? "has-error" : ""}`}>
+                  <span className="input-icon">
+                    <Icon icon="mdi:phone" />
                   </span>
                   <input
-                    type='number'
-                    name='age'
-                    className='form-input'
-                    placeholder='Age'
-                    value={formData.age}
+                    type="tel"
+                    name="phoneNumber"
+                    className="form-input"
+                    placeholder="Farmer's Phone Number (11 digits)"
+                    value={formData.phoneNumber}
                     onChange={handleChange}
-                    onFocus={() => setFocusedField('age')}
+                    onFocus={() => setFocusedField("phoneNumber")}
                     onBlur={() => setFocusedField(null)}
-                    disabled={isSubmitting || isExistingFarmer}
-                    min="18"
-                    max="120"
+                    disabled={isSubmitting || checkingPhone}
+                    maxLength={11}
                     required
                   />
-                  <span className="input-highlight"></span>
-                  {hasFieldError('age') && (
-                    <span className="field-error">{getFieldError('age')}</span>
+                  {checkingPhone && (
+                    <span className="input-loading">
+                      <Icon icon="mdi:loading" className="spinning" />
+                    </span>
+                  )}
+                  <span className="input-highlight" />
+                  {hasFieldError("phoneNumber") && (
+                    <span className="field-error">{getFieldError("phoneNumber")}</span>
                   )}
                 </div>
 
-                <div className={`input-field half ${focusedField === 'gender' ? 'focused' : ''} ${hasFieldError('gender') ? 'has-error' : ''}`}>
-                  <span className='input-icon'>
-                    <Icon icon='mdi:gender-male-female' />
+                <div className={`input-field ${focusedField === "fullname" ? "focused" : ""} ${hasFieldError("fullName") ? "has-error" : ""}`}>
+                  <span className="input-icon">
+                    <Icon icon="mdi:user" />
                   </span>
-                  <select
-                    name='gender'
-                    className='form-input select-input'
-                    value={formData.gender}
+                  <input
+                    type="text"
+                    name="fullname"
+                    className="form-input"
+                    placeholder="Farmer's Full Name"
+                    value={formData.fullname}
                     onChange={handleChange}
-                    onFocus={() => setFocusedField('gender')}
+                    onFocus={() => setFocusedField("fullname")}
                     onBlur={() => setFocusedField(null)}
                     disabled={isSubmitting || isExistingFarmer}
+                    required
+                  />
+                  <span className="input-highlight" />
+                  {hasFieldError("fullName") && (
+                    <span className="field-error">{getFieldError("fullName")}</span>
+                  )}
+                </div>
+
+                <div className={`input-field ${focusedField === "email" ? "focused" : ""} ${hasFieldError("email") ? "has-error" : ""}`}>
+                  <span className="input-icon">
+                    <Icon icon="mdi:email" />
+                  </span>
+                  <input
+                    type="email"
+                    name="email"
+                    className="form-input"
+                    placeholder="Farmer's Email Address"
+                    value={formData.email}
+                    onChange={handleChange}
+                    onFocus={() => setFocusedField("email")}
+                    onBlur={() => setFocusedField(null)}
+                    disabled={isSubmitting || isExistingFarmer}
+                  />
+                  <span className="input-highlight" />
+                  {hasFieldError("email") && (
+                    <span className="field-error">{getFieldError("email")}</span>
+                  )}
+                </div>
+
+                <div className="input-row">
+                  <div className={`input-field half ${focusedField === "age" ? "focused" : ""} ${hasFieldError("age") ? "has-error" : ""}`}>
+                    <span className="input-icon">
+                      <Icon icon="mdi:calendar" />
+                    </span>
+                    <input
+                      type="number"
+                      name="age"
+                      className="form-input"
+                      placeholder="Farmer's Age"
+                      value={formData.age}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("age")}
+                      onBlur={() => setFocusedField(null)}
+                      disabled={isSubmitting || isExistingFarmer}
+                      min="18"
+                      max="120"
+                      required
+                    />
+                    <span className="input-highlight" />
+                    {hasFieldError("age") && (
+                      <span className="field-error">{getFieldError("age")}</span>
+                    )}
+                  </div>
+
+                  <div className={`input-field half ${focusedField === "gender" ? "focused" : ""} ${hasFieldError("gender") ? "has-error" : ""}`}>
+                    <span className="input-icon">
+                      <Icon icon="mdi:gender-male-female" />
+                    </span>
+                    <select
+                      name="gender"
+                      className="form-input select-input"
+                      value={formData.gender}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("gender")}
+                      onBlur={() => setFocusedField(null)}
+                      disabled={isSubmitting || isExistingFarmer}
+                    >
+                      <option value="">Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                    <span className="input-highlight" />
+                    {hasFieldError("gender") && (
+                      <span className="field-error">{getFieldError("gender")}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className={`input-field ${focusedField === "stateId" ? "focused" : ""} ${hasFieldError("stateId") ? "has-error" : ""}`}>
+                  <span className="input-icon">
+                    <Icon icon="mdi:map-marker" />
+                  </span>
+                  <select
+                    name="stateId"
+                    className="form-input select-input"
+                    value={formData.stateId}
+                    onChange={handleChange}
+                    onFocus={() => setFocusedField("stateId")}
+                    onBlur={() => setFocusedField(null)}
+                    disabled={isSubmitting || loadingStates || states.length === 0}
+                    required
                   >
-                    <option value=''>Gender</option>
-                    <option value='Male'>Male</option>
-                    <option value='Female'>Female</option>
+                    <option value="">Select State</option>
+                    {states.map((state) => (
+                      <option key={state.id} value={state.id}>
+                        {state.name}
+                      </option>
+                    ))}
                   </select>
-                  <span className="input-highlight"></span>
-                  {hasFieldError('gender') && (
-                    <span className="field-error">{getFieldError('gender')}</span>
+                  {loadingStates && (
+                    <span className="input-loading">
+                      <Icon icon="mdi:loading" className="spinning" />
+                    </span>
+                  )}
+                  <span className="input-highlight" />
+                  {hasFieldError("stateId") && (
+                    <span className="field-error">{getFieldError("stateId")}</span>
+                  )}
+                </div>
+
+                <div className={`input-field ${focusedField === "lgaId" ? "focused" : ""} ${hasFieldError("lgaId") ? "has-error" : ""}`}>
+                  <span className="input-icon">
+                    <Icon icon="mdi:city" />
+                  </span>
+                  <select
+                    name="lgaId"
+                    className="form-input select-input"
+                    value={formData.lgaId}
+                    onChange={handleChange}
+                    onFocus={() => setFocusedField("lgaId")}
+                    onBlur={() => setFocusedField(null)}
+                    disabled={isSubmitting || !formData.stateId || lgas.length === 0}
+                    required
+                  >
+                    <option value="">Select LGA</option>
+                    {lgas.map((lga) => (
+                      <option key={lga.id} value={lga.id}>
+                        {lga.name}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="input-highlight" />
+                  {hasFieldError("lgaId") && (
+                    <span className="field-error">{getFieldError("lgaId")}</span>
                   )}
                 </div>
               </div>
 
-              {/* State Dropdown */}
-              <div className={`input-field ${focusedField === 'stateId' ? 'focused' : ''} ${hasFieldError('stateId') ? 'has-error' : ''}`}>
-                <span className='input-icon'>
-                  <Icon icon='mdi:map-marker' />
-                </span>
-                <select
-                  name='stateId'
-                  className='form-input select-input'
-                  value={formData.stateId}
-                  onChange={handleChange}
-                  onFocus={() => setFocusedField('stateId')}
-                  onBlur={() => setFocusedField(null)}
-                  disabled={isSubmitting || loadingStates || states.length === 0}
-                  required
-                >
-                  <option value=''>Select State</option>
-                  {states.map(state => (
-                    <option key={state.id} value={state.id}>
-                      {state.name}
-                    </option>
-                  ))}
-                </select>
-                {loadingStates && (
-                  <span className="input-loading">
-                    <Icon icon="mdi:loading" className="spinning" />
-                  </span>
-                )}
-                <span className="input-highlight"></span>
-                {hasFieldError('stateId') && (
-                  <span className="field-error">{getFieldError('stateId')}</span>
-                )}
-              </div>
-
-              {/* LGA Dropdown */}
-              <div className={`input-field ${focusedField === 'lgaId' ? 'focused' : ''} ${hasFieldError('lgaId') ? 'has-error' : ''}`}>
-                <span className='input-icon'>
-                  <Icon icon='mdi:city' />
-                </span>
-                <select
-                  name='lgaId'
-                  className='form-input select-input'
-                  value={formData.lgaId}
-                  onChange={handleChange}
-                  onFocus={() => setFocusedField('lgaId')}
-                  onBlur={() => setFocusedField(null)}
-                  disabled={isSubmitting || !formData.stateId || lgas.length === 0}
-                  required
-                >
-                  <option value=''>Select LGA</option>
-                  {lgas.map(lga => (
-                    <option key={lga.id} value={lga.id}>
-                      {lga.name}
-                    </option>
-                  ))}
-                </select>
-                <span className="input-highlight"></span>
-                {hasFieldError('lgaId') && (
-                  <span className="field-error">{getFieldError('lgaId')}</span>
-                )}
-              </div>
-            </div>
-
-            {/* Mechanized Services Multi-Select */}
-            <div className='services-container'>
-              <div className='services-header'>
-                <div className='services-label'>
-                  <Icon icon='mdi:tractor' className='services-icon' />
-                  <span>Mechanized Services Required</span>
+              <div className="services-container">
+                <div className="services-header">
+                  <div className="services-label">
+                    <Icon icon="mdi:tractor" className="services-icon" />
+                    <span>Mechanized Services Required</span>
+                  </div>
+                  {formData.mechanizedServices.length > 0 && (
+                    <span className="selected-badge">
+                      {formData.mechanizedServices.length} selected
+                    </span>
+                  )}
                 </div>
-                {formData.mechanizedServices.length > 0 && (
-                  <span className='selected-badge'>
-                    {formData.mechanizedServices.length} selected
-                  </span>
-                )}
+                <div className="services-grid">
+                  {services.map((service) => {
+                    const isSelected = formData.mechanizedServices.includes(service.id);
+                    return (
+                      <div 
+                        key={service.id} 
+                        className={`service-chip ${isSelected ? "selected" : ""}`}
+                        onClick={() => {
+                          if (!isSubmitting) {
+                            handleServiceToggle(service.id);
+                          }
+                        }}
+                      >
+                        <Icon icon={service.icon || "mdi:tools"} className="service-chip-icon" />
+                        <span>{service.name}</span>
+                        {isSelected && (
+                          <Icon icon="mdi:check-circle" className="check-icon" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className='services-grid'>
-                {services.map((service) => {
-                  const isSelected = formData.mechanizedServices.includes(service.id);
-                  
-                  return (
-                    <div 
-                      key={service.id} 
-                      className={`service-chip ${isSelected ? 'selected' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!isSubmitting) {
-                          handleServiceToggle(service.id);
-                        }
-                      }}
-                    >
-                      <Icon icon={service.icon || 'mdi:tools'} className="service-chip-icon" />
-                      <span>{service.name}</span>
-                      {isSelected && (
-                        <Icon icon='mdi:check-circle' className='check-icon' />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
 
-            <button
-              type="submit"
-              className="submit-button"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="spinner" role="status" aria-hidden="true"></span>
-                  Registering...
-                </>
-              ) : (
-                <>
-                  <Icon icon="mdi:account-plus" className="button-icon" />
-                  Register as Farmer
-                </>
-              )}
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="submit-button"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="spinner" role="status" aria-hidden="true" />
+                    Registering...
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="mdi:account-plus" className="button-icon" />
+                    Register as Farmer
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            <div className="verification-prompt">
+              <Icon icon="mdi:lock-outline" />
+              <p>Please verify your CL/SubCL identity above to access the farmer registration form.</p>
+            </div>
+          )}
         </div>
       </div>
 
       <style jsx>{`
-        /* ===== RESET & BASE ===== */
         * {
           box-sizing: border-box;
         }
@@ -608,7 +796,6 @@ const FarmerRegistration = () => {
         .auth-container {
           display: flex;
           min-height: 100vh;
-          min-height: 100dvh;
           width: 100%;
           max-width: 100vw;
           overflow-x: hidden;
@@ -619,7 +806,6 @@ const FarmerRegistration = () => {
           position: relative;
         }
 
-        /* ===== DECORATIVE ORBS ===== */
         .gradient-orb {
           position: absolute;
           top: -200px;
@@ -649,7 +835,6 @@ const FarmerRegistration = () => {
           50% { transform: translate(30px, -30px) scale(1.05); }
         }
 
-        /* ===== FORM CARD ===== */
         .auth-form {
           width: 100%;
           max-width: 560px;
@@ -663,7 +848,6 @@ const FarmerRegistration = () => {
           border: 1px solid rgba(255, 255, 255, 0.5);
           transition: all 0.3s ease;
           max-height: 95vh;
-          max-height: 95dvh;
           overflow-y: auto;
           overflow-x: hidden;
         }
@@ -692,7 +876,6 @@ const FarmerRegistration = () => {
           overflow: hidden;
         }
 
-        /* ===== ALERT STYLES ===== */
         .alert-container {
           margin-bottom: 1.5rem;
           display: flex;
@@ -773,7 +956,6 @@ const FarmerRegistration = () => {
           transform: rotate(90deg);
         }
 
-        /* ===== FORM HEADER ===== */
         .form-header {
           margin-bottom: 2rem;
         }
@@ -816,23 +998,6 @@ const FarmerRegistration = () => {
           box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
         }
 
-        .form-title {
-          color: #1f2937;
-          font-size: 1.75rem;
-          font-weight: 700;
-          margin-bottom: 0.5rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
-          flex-wrap: wrap;
-        }
-
-        .title-icon {
-          color: #2563eb;
-          font-size: 1.75rem;
-        }
-
         .form-subtitle {
           color: #6b7280;
           font-size: 0.95rem;
@@ -841,7 +1006,6 @@ const FarmerRegistration = () => {
           margin: 0 auto;
         }
 
-        /* ===== FORM GRID ===== */
         .form-grid {
           display: flex;
           flex-direction: column;
@@ -861,7 +1025,6 @@ const FarmerRegistration = () => {
           min-width: 0;
         }
 
-        /* ===== INPUT FIELDS ===== */
         .input-field {
           position: relative;
           border-radius: 0.875rem;
@@ -949,7 +1112,6 @@ const FarmerRegistration = () => {
           color: #94a3b8;
         }
 
-        /* Remove number input spinners */
         .form-input[type="number"]::-webkit-inner-spin-button,
         .form-input[type="number"]::-webkit-outer-spin-button {
           -webkit-appearance: none;
@@ -1004,7 +1166,6 @@ const FarmerRegistration = () => {
           to { transform: rotate(360deg); }
         }
 
-        /* ===== SELECT INPUT ===== */
         .select-input {
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
           background-repeat: no-repeat;
@@ -1023,7 +1184,6 @@ const FarmerRegistration = () => {
           background: white;
         }
 
-        /* ===== SERVICES ===== */
         .services-container {
           margin: 1.5rem 0 0.5rem;
           padding: 1.25rem;
@@ -1134,7 +1294,219 @@ const FarmerRegistration = () => {
           flex-shrink: 0;
         }
 
-        /* ===== SUBMIT BUTTON ===== */
+        .verification-section {
+          background: linear-gradient(135deg, #f0f7ff, #e8f0fe);
+          border: 2px solid #bfdbfe;
+          border-radius: 1rem;
+          padding: 1.25rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .verification-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.75rem;
+          font-weight: 600;
+          color: #1e40af;
+          font-size: 0.95rem;
+        }
+
+        .verification-icon {
+          font-size: 1.25rem;
+          color: #2563eb;
+        }
+
+        .verification-title {
+          color: #1e293b;
+        }
+
+        .verification-info {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          padding: 0.5rem 0.75rem;
+          background: rgba(255, 255, 255, 0.6);
+          border-radius: 0.5rem;
+          font-size: 0.8rem;
+          color: #475569;
+          margin-bottom: 0.75rem;
+        }
+
+        .verification-info svg {
+          flex-shrink: 0;
+          margin-top: 0.1rem;
+          color: #64748b;
+        }
+
+        .verification-input-group {
+          display: flex;
+          gap: 0.75rem;
+          align-items: flex-start;
+        }
+
+        .verification-input-group .input-field {
+          flex: 1;
+        }
+
+        .verification-actions {
+          display: flex;
+          gap: 0.5rem;
+          flex-shrink: 0;
+        }
+
+        .verify-button {
+          padding: 0 1.25rem;
+          height: 3.5rem;
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          color: white;
+          border: none;
+          border-radius: 0.875rem;
+          font-weight: 600;
+          font-size: 0.875rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          white-space: nowrap;
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        .verify-button:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .verify-button:active:not(:disabled) {
+          transform: translateY(0);
+        }
+
+        .verify-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .reset-button {
+          padding: 0 1.25rem;
+          height: 3.5rem;
+          background: #f1f5f9;
+          color: #64748b;
+          border: 2px solid #e2e8f0;
+          border-radius: 0.875rem;
+          font-weight: 600;
+          font-size: 0.875rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          white-space: nowrap;
+        }
+
+        .reset-button:hover:not(:disabled) {
+          background: #fee2e2;
+          border-color: #fca5a5;
+          color: #dc2626;
+        }
+
+        .reset-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .spinner-small {
+          display: inline-block;
+          width: 1rem;
+          height: 1rem;
+          border: 2px solid currentColor;
+          border-right-color: transparent;
+          border-radius: 50%;
+          animation: spinner-border 0.75s linear infinite;
+        }
+
+        .verification-status {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-top: 0.75rem;
+          padding: 0.75rem 1rem;
+          border-radius: 0.5rem;
+          font-size: 0.85rem;
+        }
+
+        .verification-status.success {
+          background: #dcfce7;
+          color: #166534;
+          border-left: 4px solid #22c55e;
+        }
+
+        .verification-status.success svg {
+          color: #22c55e;
+          flex-shrink: 0;
+          font-size: 1.25rem;
+        }
+
+        .code-display {
+          display: inline-block;
+          background: #166534;
+          color: white;
+          padding: 0.15rem 0.75rem;
+          border-radius: 0.25rem;
+          font-family: monospace;
+          font-size: 0.8rem;
+          margin-top: 0.25rem;
+        }
+
+        .verified-by-display {
+          display: inline-block;
+          background: #059669;
+          color: white;
+          padding: 0.15rem 0.75rem;
+          border-radius: 0.25rem;
+          font-size: 0.7rem;
+          margin-left: 0.5rem;
+          font-weight: 500;
+        }
+
+        .user-id-display {
+          display: inline-block;
+          background: #1e40af;
+          color: white;
+          padding: 0.15rem 0.75rem;
+          border-radius: 0.25rem;
+          font-family: monospace;
+          font-size: 0.8rem;
+          margin-top: 0.25rem;
+        }
+
+        .verification-prompt {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 3rem 1.5rem;
+          text-align: center;
+          background: #f8fafc;
+          border-radius: 1rem;
+          border: 2px dashed #e2e8f0;
+          margin-top: 1rem;
+        }
+
+        .verification-prompt svg {
+          font-size: 3rem;
+          color: #94a3b8;
+          margin-bottom: 1rem;
+        }
+
+        .verification-prompt p {
+          color: #64748b;
+          font-size: 0.95rem;
+          max-width: 300px;
+          margin: 0;
+          line-height: 1.6;
+        }
+
         .submit-button {
           width: 100%;
           padding: 1rem 1.5rem;
@@ -1150,7 +1522,7 @@ const FarmerRegistration = () => {
           gap: 0.75rem;
           cursor: pointer;
           transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-          margin-top: 2rem;
+          margin-top: 1.5rem;
           position: relative;
           overflow: hidden;
           box-shadow: 0 4px 16px rgba(37, 99, 235, 0.25);
@@ -1158,7 +1530,7 @@ const FarmerRegistration = () => {
         }
 
         .submit-button::before {
-          content: '';
+          content: "";
           position: absolute;
           top: 0;
           left: -100%;
@@ -1182,9 +1554,10 @@ const FarmerRegistration = () => {
         }
 
         .submit-button:disabled {
-          opacity: 0.6;
+          opacity: 0.5;
           cursor: not-allowed;
           transform: none;
+          background: #94a3b8;
         }
 
         .button-icon {
@@ -1203,7 +1576,6 @@ const FarmerRegistration = () => {
           flex-shrink: 0;
         }
 
-        /* ===== ANIMATIONS ===== */
         @keyframes slideDown {
           from {
             opacity: 0;
@@ -1233,310 +1605,187 @@ const FarmerRegistration = () => {
           }
         }
 
-        /* ======================================== */
-        /* ===== RESPONSIVE BREAKPOINTS ===== */
-        /* ======================================== */
-
-        /* === Tablets & Small Laptops === */
         @media (max-width: 768px) {
           .auth-form {
             padding: 2rem 1.5rem;
             max-width: 100%;
             border-radius: 1.5rem;
           }
-
-          .form-title {
-            font-size: 1.5rem;
-          }
-
-          .form-subtitle {
-            font-size: 0.9rem;
-          }
-
           .logo-link {
             max-width: 200px;
           }
         }
 
-        /* === Mobile Phones === */
         @media (max-width: 640px) {
           .auth-container {
             padding: 0.75rem;
             align-items: flex-start;
             padding-top: 1rem;
           }
-
           .auth-form {
             padding: 1.5rem 1rem;
             border-radius: 1.25rem;
             max-height: 98vh;
-            max-height: 98dvh;
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
           }
-
           .form-header {
             margin-bottom: 1.5rem;
           }
-
           .logo-link {
             max-width: 170px;
             margin-bottom: 1rem;
           }
-
-          .form-title {
-            font-size: 1.25rem;
-            gap: 0.5rem;
-          }
-
-          .title-icon {
-            font-size: 1.25rem;
-          }
-
-          .form-subtitle {
-            font-size: 0.85rem;
-            padding: 0 0.5rem;
-          }
-
           .badge {
             font-size: 0.6rem;
             padding: 0.2rem 0.75rem;
           }
-
+          .verification-section {
+            padding: 1rem;
+          }
+          .verification-input-group {
+            flex-direction: column;
+          }
+          .verify-button,
+          .reset-button {
+            width: 100%;
+            justify-content: center;
+            height: 3rem;
+          }
           .form-grid {
             gap: 0.75rem;
           }
-
           .input-row {
             flex-direction: column;
             gap: 0.75rem;
           }
-
           .input-row .half {
             flex: none;
             width: 100%;
           }
-
           .form-input {
             height: 3.25rem;
             font-size: 0.9rem;
             padding-left: 3rem;
             padding-right: 0.75rem;
           }
-
           .input-icon {
             font-size: 1.1rem;
             top: 1rem;
             left: 0.875rem;
-            width: 1.25rem;
-            height: 1.25rem;
           }
-
           .services-container {
             padding: 1rem;
             margin: 1rem 0 0.5rem;
           }
-
-          .services-label {
-            font-size: 0.85rem;
-          }
-
           .services-grid {
             gap: 0.5rem;
           }
-
           .service-chip {
             font-size: 0.75rem;
             padding: 0.4rem 0.75rem;
-            gap: 0.4rem;
           }
-
-          .service-chip-icon {
-            font-size: 0.875rem;
-          }
-
-          .selected-badge {
-            font-size: 0.65rem;
-            padding: 0.2rem 0.625rem;
-          }
-
           .submit-button {
             padding: 0.875rem 1.25rem;
             font-size: 0.9rem;
             margin-top: 1.5rem;
-            border-radius: 0.875rem;
           }
-
-          .button-icon {
-            font-size: 1.1rem;
-          }
-
-          .alert {
-            padding: 0.75rem 1rem;
-            border-radius: 0.75rem;
-            gap: 0.5rem;
-          }
-
-          .alert-text {
-            font-size: 0.8rem;
-          }
-
-          .alert-icon {
-            font-size: 1.1rem;
-          }
-
-          .alert-close {
-            font-size: 1.1rem;
-          }
-
           .gradient-orb,
           .gradient-orb-2 {
             display: none;
           }
-
-          .input-loading {
-            font-size: 1.1rem;
-            top: 1rem;
-            right: 0.75rem;
-          }
-
-          .select-input {
-            background-position: right 0.75rem center;
-            padding-right: 2rem;
-          }
-
-          .field-error {
-            font-size: 0.7rem;
-            padding: 0.2rem 0.5rem 0.2rem 0.75rem;
-          }
         }
 
-        /* === Small Mobile Phones === */
         @media (max-width: 400px) {
           .auth-container {
             padding: 0.5rem;
             padding-top: 0.75rem;
           }
-
           .auth-form {
             padding: 1.25rem 0.75rem;
             border-radius: 1rem;
           }
-
-          .form-title {
-            font-size: 1.1rem;
-          }
-
-          .title-icon {
-            font-size: 1.1rem;
-          }
-
           .form-input {
             height: 3rem;
             font-size: 0.85rem;
             padding-left: 2.75rem;
           }
-
           .input-icon {
             font-size: 1rem;
             top: 0.875rem;
             left: 0.75rem;
-            width: 1.1rem;
-            height: 1.1rem;
           }
-
           .logo-link {
             max-width: 150px;
           }
-
-          .services-container {
-            padding: 0.75rem;
-          }
-
-          .service-chip {
-            font-size: 0.7rem;
-            padding: 0.35rem 0.625rem;
-          }
-
           .submit-button {
             padding: 0.75rem 1rem;
             font-size: 0.85rem;
           }
         }
 
-        /* === Landscape Mode on Mobile === */
         @media (max-height: 600px) and (orientation: landscape) {
           .auth-container {
             padding: 0.5rem;
             align-items: center;
           }
-
           .auth-form {
             padding: 1.25rem 1.5rem;
             max-height: 98vh;
-            max-height: 98dvh;
           }
-
           .form-header {
             margin-bottom: 0.75rem;
           }
-
           .logo-link {
             max-width: 130px;
             margin-bottom: 0.5rem;
           }
-
-          .form-title {
-            font-size: 1.1rem;
-          }
-
-          .form-subtitle {
-            font-size: 0.75rem;
-            margin-bottom: 0;
-          }
-
           .form-grid {
             gap: 0.5rem;
           }
-
           .form-input {
             height: 2.75rem;
             font-size: 0.8rem;
             padding-left: 2.75rem;
           }
-
           .input-icon {
             font-size: 0.9rem;
             top: 0.875rem;
             left: 0.75rem;
           }
-
           .input-row {
             flex-direction: row;
             gap: 0.5rem;
           }
-
           .services-container {
             padding: 0.75rem;
             margin: 0.75rem 0 0.25rem;
           }
-
           .services-grid {
             gap: 0.375rem;
           }
-
           .service-chip {
             font-size: 0.65rem;
             padding: 0.3rem 0.625rem;
           }
-
           .submit-button {
             padding: 0.625rem 1rem;
             font-size: 0.8rem;
             margin-top: 0.75rem;
           }
-
           .badge {
             display: none;
+          }
+          .verification-section {
+            padding: 0.75rem;
+          }
+          .verification-input-group {
+            flex-direction: row;
+          }
+          .verify-button,
+          .reset-button {
+            height: 2.75rem;
+            padding: 0 0.75rem;
+            font-size: 0.75rem;
           }
         }
       `}</style>

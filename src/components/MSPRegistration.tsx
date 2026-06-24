@@ -67,6 +67,8 @@ const MSPRegistration = () => {
     email: '',
     gender: '',
     trainingsAttended: [] as string[],
+    year: '', // New field: Year
+    mspCategory: '', // New field: MSP Category
   });
   
   const router = useRouter();
@@ -145,6 +147,7 @@ const MSPRegistration = () => {
               email: res.data.email || "",
               age: res.data.age || "",
               gender: res.data.gender || "",
+              // Don't override year and mspCategory for existing MSPs
             }));
             setIsExistingMSP(true);
             setMessage("Existing MSP found. Details prefilled (read-only).");
@@ -155,6 +158,7 @@ const MSPRegistration = () => {
               email: "",
               age: "",
               gender: "",
+              // Don't reset year and mspCategory for new MSPs
             }));
             setIsExistingMSP(false);
             setMessage("New MSP — please enter your details (will be registered on submit).");
@@ -177,6 +181,7 @@ const MSPRegistration = () => {
           email: "",
           age: "",
           gender: "",
+          // Don't reset year and mspCategory
         }));
       }
     }
@@ -212,7 +217,7 @@ const MSPRegistration = () => {
     setFieldErrors({});
 
     try {
-      if (!formData.fullname || !formData.phoneNumber || !formData.age || !formData.stateId || !formData.lgaId) {
+      if (!formData.fullname || !formData.phoneNumber || !formData.age || !formData.stateId || !formData.lgaId || !formData.year || !formData.mspCategory) {
         setError('Please fill in all required fields');
         setIsSubmitting(false);
         return;
@@ -227,6 +232,8 @@ const MSPRegistration = () => {
         email: formData.email || undefined,
         gender: formData.gender || undefined,
         trainingsAttended: formData.trainingsAttended,
+        year: formData.year, // Add year to payload
+        mspCategory: formData.mspCategory, // Add MSP category to payload
       };
 
       console.log('Sending payload:', payload);
@@ -302,10 +309,10 @@ const MSPRegistration = () => {
             </Link>
             <div className="header-content">
               <div className="title-badge">
-                <span className="badge">New MSP Registration</span>
+                <span className="badge">ISSAM Project Attendance Form</span>
               </div>
               <p className='form-subtitle'>
-                Register as a Mechanized Service Provider (MSP) to offer farming services
+                If you've attended any of ISSAM Project trainings, sensitization or mobilization, kindly fill this form.
               </p>
             </div>
           </div>
@@ -466,6 +473,60 @@ const MSPRegistration = () => {
                 </div>
               </div>
 
+              {/* Year Dropdown - NEW FIELD */}
+              <div className={`input-field ${focusedField === 'year' ? 'focused' : ''} ${hasFieldError('year') ? 'has-error' : ''}`}>
+                <span className='input-icon'>
+                  <Icon icon='mdi:calendar-range' />
+                </span>
+                <select
+                  name='year'
+                  className='form-input select-input'
+                  value={formData.year}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField('year')}
+                  onBlur={() => setFocusedField(null)}
+                  disabled={isSubmitting}
+                  required
+                >
+                  <option value=''>Select Year</option>
+                  <option value='Year 1'>Year 1</option>
+                  <option value='Year 2'>Year 2</option>
+                  <option value='Year 1&2'>All</option>
+                </select>
+                <span className="input-highlight"></span>
+                {hasFieldError('year') && (
+                  <span className="field-error">{getFieldError('year')}</span>
+                )}
+              </div>
+
+              {/* MSP Category Dropdown - NEW FIELD */}
+              <div className={`input-field ${focusedField === 'mspCategory' ? 'focused' : ''} ${hasFieldError('mspCategory') ? 'has-error' : ''}`}>
+                <span className='input-icon'>
+                  <Icon icon='mdi:account-tag' />
+                </span>
+                <select
+                  name='mspCategory'
+                  className='form-input select-input'
+                  value={formData.mspCategory}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField('mspCategory')}
+                  onBlur={() => setFocusedField(null)}
+                  disabled={isSubmitting}
+                  required
+                >
+                  <option value=''>Select MSP Category</option>
+                  <option value='Mechanic'>Mechanic</option>
+                  <option value='Existing MSP'>Existing MSP</option>
+                  <option value='New MSP'>New MSP</option>
+                  <option value='CL'>CL</option>
+                  <option value='SubCL'>SubCL</option>
+                </select>
+                <span className="input-highlight"></span>
+                {hasFieldError('mspCategory') && (
+                  <span className="field-error">{getFieldError('mspCategory')}</span>
+                )}
+              </div>
+
               {/* State Dropdown */}
               <div className={`input-field ${focusedField === 'stateId' ? 'focused' : ''} ${hasFieldError('stateId') ? 'has-error' : ''}`}>
                 <span className='input-icon'>
@@ -575,12 +636,12 @@ const MSPRegistration = () => {
               {isSubmitting ? (
                 <>
                   <span className="spinner" role="status" aria-hidden="true"></span>
-                  Registering...
+                  Submitting...
                 </>
               ) : (
                 <>
                   <Icon icon="mdi:account-plus" className="button-icon" />
-                  Register as MSP
+                  Submit
                 </>
               )}
             </button>

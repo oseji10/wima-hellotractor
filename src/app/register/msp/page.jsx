@@ -3,7 +3,7 @@ import MSPRegistration from "@/components/MSPRegistration";
 import SignUpLayer from "@/components/SignUpLayer";
 
 export const metadata = {
-  title: "Register MSP - MamaTrak App",
+  title: "ISSAM Project Attendance Form - MamaTrak App",
   description:
     "WIMA is at the forefront of revolutionizing mechanized agriculture in Nigeria",
 };
