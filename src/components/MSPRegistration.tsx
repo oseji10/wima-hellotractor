@@ -49,6 +49,8 @@ const MSPRegistration = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [registrationData, setRegistrationData] = useState<any>(null);
   
   // Static list of trainings
   const trainings: Training[] = [
@@ -67,8 +69,8 @@ const MSPRegistration = () => {
     email: '',
     gender: '',
     trainingsAttended: [] as string[],
-    year: '', // New field: Year
-    mspCategory: '', // New field: MSP Category
+    year: '',
+    mspCategory: '',
   });
   
   const router = useRouter();
@@ -147,7 +149,6 @@ const MSPRegistration = () => {
               email: res.data.email || "",
               age: res.data.age || "",
               gender: res.data.gender || "",
-              // Don't override year and mspCategory for existing MSPs
             }));
             setIsExistingMSP(true);
             setMessage("Existing MSP found. Details prefilled (read-only).");
@@ -158,10 +159,9 @@ const MSPRegistration = () => {
               email: "",
               age: "",
               gender: "",
-              // Don't reset year and mspCategory for new MSPs
             }));
             setIsExistingMSP(false);
-            setMessage("New MSP — please enter your details (will be registered on submit).");
+            setMessage("New MSP — please enter your details (your attendance will be recorded on submit).");
           }
         } catch (err) {
           setMessage("Could not validate number.");
@@ -181,7 +181,6 @@ const MSPRegistration = () => {
           email: "",
           age: "",
           gender: "",
-          // Don't reset year and mspCategory
         }));
       }
     }
@@ -232,8 +231,8 @@ const MSPRegistration = () => {
         email: formData.email || undefined,
         gender: formData.gender || undefined,
         trainingsAttended: formData.trainingsAttended,
-        year: formData.year, // Add year to payload
-        mspCategory: formData.mspCategory, // Add MSP category to payload
+        year: formData.year,
+        mspCategory: formData.mspCategory,
       };
 
       console.log('Sending payload:', payload);
@@ -244,10 +243,27 @@ const MSPRegistration = () => {
         { withCredentials: true }
       );
 
+      // Store registration data for the modal
+      setRegistrationData(response.data.data);
+      setShowSuccessModal(true);
       setSuccessMessage('MSP Registration successful!');
       setMessage('');
       
-     
+      // Clear the form after successful submission
+      setFormData({
+        fullname: '',
+        phoneNumber: '',
+        age: '',
+        stateId: '',
+        lgaId: '',
+        email: '',
+        gender: '',
+        trainingsAttended: [],
+        year: '',
+        mspCategory: '',
+      });
+      setIsExistingMSP(false);
+      
     } catch (error: any) {
       console.error('Registration failed:', error);
       
@@ -267,6 +283,12 @@ const MSPRegistration = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const closeSuccessModal = () => {
+    setShowSuccessModal(false);
+    setRegistrationData(null);
+    setSuccessMessage(null);
   };
 
   useEffect(() => {
@@ -327,7 +349,7 @@ const MSPRegistration = () => {
                 </button>
               </div>
             )}
-            {successMessage && (
+            {successMessage && !showSuccessModal && (
               <div className="alert success">
                 <Icon icon="clarity:success-standard-line" className="alert-icon success" />
                 <span className="alert-text">{successMessage}</span>
@@ -473,7 +495,7 @@ const MSPRegistration = () => {
                 </div>
               </div>
 
-              {/* Year Dropdown - NEW FIELD */}
+              {/* Year Dropdown */}
               <div className={`input-field ${focusedField === 'year' ? 'focused' : ''} ${hasFieldError('year') ? 'has-error' : ''}`}>
                 <span className='input-icon'>
                   <Icon icon='mdi:calendar-range' />
@@ -499,7 +521,7 @@ const MSPRegistration = () => {
                 )}
               </div>
 
-              {/* MSP Category Dropdown - NEW FIELD */}
+              {/* MSP Category Dropdown */}
               <div className={`input-field ${focusedField === 'mspCategory' ? 'focused' : ''} ${hasFieldError('mspCategory') ? 'has-error' : ''}`}>
                 <span className='input-icon'>
                   <Icon icon='mdi:account-tag' />
@@ -648,6 +670,59 @@ const MSPRegistration = () => {
           </form>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="modal-overlay" onClick={closeSuccessModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-icon success-icon">
+                <Icon icon="clarity:success-standard-line" />
+              </div>
+              <h2>Successful!</h2>
+              {/* <p className="modal-subtitle">MSP attendance has been recorded successfully.</p> */}
+            </div>
+            
+            {registrationData && (
+              <div className="modal-body">
+                <div className="detail-item">
+                  <span className="detail-label">MSP ID:</span>
+                  <span className="detail-value">{registrationData.msp?.mspId || 'N/A'}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Full Name:</span>
+                  <span className="detail-value">{registrationData.msp?.fullName || formData.fullname}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Phone Number:</span>
+                  <span className="detail-value">{registrationData.msp?.phoneNumber || formData.phoneNumber}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Category:</span>
+                  <span className="detail-value">{registrationData.msp?.type || formData.type}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Year:</span>
+                  <span className="detail-value">{registrationData.msp?.year || formData.year}</span>
+                </div>
+                {registrationData.msp?.code && (
+                  <div className="detail-item highlight">
+                    <span className="detail-label">Unique Code:</span>
+                    <span className="detail-value code-value">{registrationData.msp.code}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="modal-footer">
+              <button className="modal-button" onClick={closeSuccessModal}>
+                <Icon icon="mdi:check" />
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         /* ===== RESET & BASE ===== */
@@ -1253,6 +1328,159 @@ const MSPRegistration = () => {
           flex-shrink: 0;
         }
 
+        /* ===== SUCCESS MODAL ===== */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          animation: fadeIn 0.3s ease;
+          padding: 1rem;
+        }
+
+        .modal-content {
+          background: white;
+          border-radius: 1.5rem;
+          max-width: 480px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+          padding: 2rem 2rem 1rem;
+          text-align: center;
+        }
+
+        .modal-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 72px;
+          height: 72px;
+          border-radius: 50%;
+          margin: 0 auto 1rem;
+          font-size: 2.5rem;
+        }
+
+        .success-icon {
+          background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+          color: #22c55e;
+        }
+
+        .modal-header h2 {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 0 0 0.25rem;
+        }
+
+        .modal-subtitle {
+          color: #6b7280;
+          font-size: 0.95rem;
+          margin: 0;
+        }
+
+        .modal-body {
+          padding: 1rem 2rem 0.5rem;
+        }
+
+        .detail-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.625rem 0;
+          border-bottom: 1px solid #f3f4f6;
+        }
+
+        .detail-item:last-child {
+          border-bottom: none;
+        }
+
+        .detail-item.highlight {
+          background: linear-gradient(135deg, #eff6ff, #dbeafe);
+          margin: 0 -0.5rem;
+          padding: 0.625rem 0.5rem;
+          border-radius: 0.5rem;
+          border-bottom: none;
+        }
+
+        .detail-label {
+          font-weight: 500;
+          color: #4b5563;
+          font-size: 0.875rem;
+        }
+
+        .detail-value {
+          color: #1f2937;
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+
+        .code-value {
+          color: #2563eb;
+          font-weight: 700;
+          font-family: monospace;
+          font-size: 1rem;
+          letter-spacing: 1px;
+        }
+
+        .modal-footer {
+          padding: 1.5rem 2rem 2rem;
+          text-align: center;
+        }
+
+        .modal-button {
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          color: white;
+          border: none;
+          padding: 0.75rem 2.5rem;
+          border-radius: 0.75rem;
+          font-weight: 600;
+          font-size: 0.95rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          box-shadow: 0 4px 16px rgba(37, 99, 235, 0.2);
+        }
+
+        .modal-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
+        }
+
+        /* ===== MODAL ANIMATIONS ===== */
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
         /* ===== ANIMATIONS ===== */
         @keyframes slideDown {
           from {
@@ -1305,6 +1533,10 @@ const MSPRegistration = () => {
 
           .logo-link {
             max-width: 200px;
+          }
+
+          .modal-content {
+            max-width: 90%;
           }
         }
 
@@ -1458,6 +1690,33 @@ const MSPRegistration = () => {
             font-size: 0.7rem;
             padding: 0.2rem 0.5rem 0.2rem 0.75rem;
           }
+
+          .modal-content {
+            max-width: 95%;
+            border-radius: 1.25rem;
+          }
+
+          .modal-header {
+            padding: 1.5rem 1.5rem 0.75rem;
+          }
+
+          .modal-icon {
+            width: 56px;
+            height: 56px;
+            font-size: 2rem;
+          }
+
+          .modal-header h2 {
+            font-size: 1.25rem;
+          }
+
+          .modal-body {
+            padding: 0.75rem 1.5rem 0.25rem;
+          }
+
+          .modal-footer {
+            padding: 1rem 1.5rem 1.5rem;
+          }
         }
 
         /* === Small Mobile Phones === */
@@ -1510,6 +1769,10 @@ const MSPRegistration = () => {
           .submit-button {
             padding: 0.75rem 1rem;
             font-size: 0.85rem;
+          }
+
+          .modal-header h2 {
+            font-size: 1.1rem;
           }
         }
 
@@ -1587,6 +1850,28 @@ const MSPRegistration = () => {
 
           .badge {
             display: none;
+          }
+
+          .modal-content {
+            max-height: 90vh;
+          }
+
+          .modal-header {
+            padding: 1rem 1.5rem 0.5rem;
+          }
+
+          .modal-icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.75rem;
+          }
+
+          .modal-body {
+            padding: 0.5rem 1.5rem 0.25rem;
+          }
+
+          .modal-footer {
+            padding: 0.75rem 1.5rem 1rem;
           }
         }
       `}</style>

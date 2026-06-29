@@ -71,6 +71,8 @@ const FarmerRegistration = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [clSubCLData, setClSubCLData] = useState<CLSubCLData | null>(null);
   const [verificationInput, setVerificationInput] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [registrationData, setRegistrationData] = useState<any>(null);
   
   const services: Service[] = [
     { id: 'threshing', name: 'Threshing', icon: 'mdi:grain' },
@@ -342,9 +344,13 @@ const FarmerRegistration = () => {
         { withCredentials: true }
       );
 
-      setSuccessMessage('Farmer registration successful! Redirecting...');
+      // Store registration data for the modal
+      setRegistrationData(response.data.data);
+      setShowSuccessModal(true);
+      setSuccessMessage('Farmer registration successful!');
       setMessage('');
       
+      // Clear the form after successful submission
       setFormData({
         fullname: '',
         phoneNumber: '',
@@ -356,6 +362,7 @@ const FarmerRegistration = () => {
         mechanizedServices: [],
       });
       
+      // Reset verification but keep the modal open
       handleResetVerification();
       
     } catch (error: any) {
@@ -376,6 +383,12 @@ const FarmerRegistration = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const closeSuccessModal = () => {
+    setShowSuccessModal(false);
+    setRegistrationData(null);
+    setSuccessMessage(null);
   };
 
   useEffect(() => {
@@ -435,7 +448,7 @@ const FarmerRegistration = () => {
                 </button>
               </div>
             )}
-            {successMessage && (
+            {successMessage && !showSuccessModal && (
               <div className="alert success">
                 <Icon icon="clarity:success-standard-line" className="alert-icon success" />
                 <span className="alert-text">{successMessage}</span>
@@ -530,12 +543,6 @@ const FarmerRegistration = () => {
                       {clSubCLData.verifiedBy === "code" ? "✓ Verified by code" : "✓ Verified by phone"}
                     </span>
                   )}
-                  {/* {clSubCLData.userId && (
-                    <>
-                      <br />
-                      <span className="user-id-display">User ID: {clSubCLData.userId}</span>
-                    </>
-                  )} */}
                 </div>
               </div>
             )}
@@ -787,6 +794,57 @@ const FarmerRegistration = () => {
           )}
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="modal-overlay" onClick={closeSuccessModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-icon success-icon">
+                <Icon icon="clarity:success-standard-line" />
+              </div>
+              <h2>Farmer Registered Successfully!</h2>
+              {/* <p className="modal-subtitle">The farmer has been registered successfully.</p> */}
+            </div>
+            
+            {registrationData && (
+              <div className="modal-body">
+                <div className="detail-item">
+                  <span className="detail-label">Farmer ID:</span>
+                  <span className="detail-value">{registrationData.farmerId || 'N/A'}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Full Name:</span>
+                  <span className="detail-value">{formData.fullname || registrationData.farmerFirstName + ' ' + registrationData.farmerLastName}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Phone Number:</span>
+                  <span className="detail-value">{formData.phoneNumber}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Gender:</span>
+                  <span className="detail-value">{formData.gender || 'Not specified'}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Registered By:</span>
+                  <span className="detail-value">{clSubCLData?.fullname || 'N/A'}</span>
+                </div>
+                <div className="detail-item highlight">
+                  <span className="detail-label">Category:</span>
+                  <span className="detail-value">{clSubCLData?.mspCategory || 'N/A'}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="modal-footer">
+              <button className="modal-button" onClick={closeSuccessModal}>
+                <Icon icon="mdi:check" />
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         * {
@@ -1469,17 +1527,6 @@ const FarmerRegistration = () => {
           font-weight: 500;
         }
 
-        .user-id-display {
-          display: inline-block;
-          background: #1e40af;
-          color: white;
-          padding: 0.15rem 0.75rem;
-          border-radius: 0.25rem;
-          font-family: monospace;
-          font-size: 0.8rem;
-          margin-top: 0.25rem;
-        }
-
         .verification-prompt {
           display: flex;
           flex-direction: column;
@@ -1576,6 +1623,151 @@ const FarmerRegistration = () => {
           flex-shrink: 0;
         }
 
+        /* ===== SUCCESS MODAL ===== */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          animation: fadeIn 0.3s ease;
+          padding: 1rem;
+        }
+
+        .modal-content {
+          background: white;
+          border-radius: 1.5rem;
+          max-width: 480px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+          padding: 2rem 2rem 1rem;
+          text-align: center;
+        }
+
+        .modal-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 72px;
+          height: 72px;
+          border-radius: 50%;
+          margin: 0 auto 1rem;
+          font-size: 2.5rem;
+        }
+
+        .success-icon {
+          background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+          color: #22c55e;
+        }
+
+        .modal-header h2 {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 0 0 0.25rem;
+        }
+
+        .modal-subtitle {
+          color: #6b7280;
+          font-size: 0.95rem;
+          margin: 0;
+        }
+
+        .modal-body {
+          padding: 1rem 2rem 0.5rem;
+        }
+
+        .detail-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.625rem 0;
+          border-bottom: 1px solid #f3f4f6;
+        }
+
+        .detail-item:last-child {
+          border-bottom: none;
+        }
+
+        .detail-item.highlight {
+          background: linear-gradient(135deg, #eff6ff, #dbeafe);
+          margin: 0 -0.5rem;
+          padding: 0.625rem 0.5rem;
+          border-radius: 0.5rem;
+          border-bottom: none;
+        }
+
+        .detail-label {
+          font-weight: 500;
+          color: #4b5563;
+          font-size: 0.875rem;
+        }
+
+        .detail-value {
+          color: #1f2937;
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+
+        .modal-footer {
+          padding: 1.5rem 2rem 2rem;
+          text-align: center;
+        }
+
+        .modal-button {
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          color: white;
+          border: none;
+          padding: 0.75rem 2.5rem;
+          border-radius: 0.75rem;
+          font-weight: 600;
+          font-size: 0.95rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          box-shadow: 0 4px 16px rgba(37, 99, 235, 0.2);
+        }
+
+        .modal-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
+        }
+
+        /* ===== MODAL ANIMATIONS ===== */
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
         @keyframes slideDown {
           from {
             opacity: 0;
@@ -1613,6 +1805,9 @@ const FarmerRegistration = () => {
           }
           .logo-link {
             max-width: 200px;
+          }
+          .modal-content {
+            max-width: 90%;
           }
         }
 
@@ -1693,6 +1888,27 @@ const FarmerRegistration = () => {
           .gradient-orb-2 {
             display: none;
           }
+          .modal-content {
+            max-width: 95%;
+            border-radius: 1.25rem;
+          }
+          .modal-header {
+            padding: 1.5rem 1.5rem 0.75rem;
+          }
+          .modal-icon {
+            width: 56px;
+            height: 56px;
+            font-size: 2rem;
+          }
+          .modal-header h2 {
+            font-size: 1.25rem;
+          }
+          .modal-body {
+            padding: 0.75rem 1.5rem 0.25rem;
+          }
+          .modal-footer {
+            padding: 1rem 1.5rem 1.5rem;
+          }
         }
 
         @media (max-width: 400px) {
@@ -1720,6 +1936,9 @@ const FarmerRegistration = () => {
           .submit-button {
             padding: 0.75rem 1rem;
             font-size: 0.85rem;
+          }
+          .modal-header h2 {
+            font-size: 1.1rem;
           }
         }
 
@@ -1786,6 +2005,23 @@ const FarmerRegistration = () => {
             height: 2.75rem;
             padding: 0 0.75rem;
             font-size: 0.75rem;
+          }
+          .modal-content {
+            max-height: 90vh;
+          }
+          .modal-header {
+            padding: 1rem 1.5rem 0.5rem;
+          }
+          .modal-icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.75rem;
+          }
+          .modal-body {
+            padding: 0.5rem 1.5rem 0.25rem;
+          }
+          .modal-footer {
+            padding: 0.75rem 1.5rem 1rem;
           }
         }
       `}</style>

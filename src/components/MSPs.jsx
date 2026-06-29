@@ -44,6 +44,7 @@ const MSPSTable = () => {
   const [userRole, setUserRole] = useState(null);
   const [userStateId, setUserStateId] = useState(null);
   const [userLgaId, setUserLgaId] = useState(null);
+
   // Fetch user role and stateId
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -130,12 +131,8 @@ const MSPSTable = () => {
 
   // Fetch LGAs based on selectedState
   useEffect(() => {
-    // Clear LGAs if no valid state is selected
     if (!selectedState && !modalSelectedState && !editModalSelectedState) {
       setLgas([]);
-      setSelectedLga("");
-      setModalSelectedLga("");
-      setEditModalSelectedLga("");
       return;
     }
 
@@ -144,9 +141,6 @@ const MSPSTable = () => {
     
     if (!effectiveStateId) {
       setLgas([]);
-      setSelectedLga("");
-      setModalSelectedLga("");
-      setEditModalSelectedLga("");
       return;
     }
 
@@ -164,18 +158,22 @@ const MSPSTable = () => {
           id: hub.lga_info.lgaId,
           name: hub.lga_info.lgaName
         };
-      } else {
-        console.warn("Invalid hub data, missing lga_info:", hub);
       }
     });
     
     setLgas(Object.values(uniqueLgas));
-  }, [selectedState, modalSelectedState, editModalSelectedState, activeHubs]);
+    
+    // Reset selected LGA if it's not valid for the new state
+    if (selectedLga && !uniqueLgas[selectedLga]) {
+      setSelectedLga("");
+    }
+  }, [selectedState, modalSelectedState, editModalSelectedState, activeHubs, selectedLga]);
 
   // Fetch MSPs with filtering and pagination
   useEffect(() => {
     const fetchMsps = async () => {
       setLoadingMsps(true);
+      setError(null);
       try {
         const params = {
           page: pagination.currentPage,
@@ -184,7 +182,9 @@ const MSPSTable = () => {
 
         // Add filter params based on role
         if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
-          if (selectedState) params.state = selectedState;
+          if (selectedState) {
+            params.state = selectedState;
+          }
           if (selectedLga) params.lga = selectedLga;
         } else if (userRole === 'State Coordinator' || userRole === 'Community Lead') {
           if (userStateId) params.state = userStateId;
@@ -192,6 +192,8 @@ const MSPSTable = () => {
         }
         if (selectedProject) params.projectId = selectedProject;
         if (searchTerm) params.search = searchTerm;
+
+        console.log("Fetching MSPs with params:", params);
 
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/msps`, { params });
         const data = response.data;
@@ -219,11 +221,20 @@ const MSPSTable = () => {
   }, [pagination.currentPage, pagination.perPage, selectedState, selectedLga, selectedProject, searchTerm, userRole, userStateId]);
 
   // Reset to page 1 when filters change
+  // useEffect(() => {
+  //   if (selectedState || selectedLga || selectedProject || searchTerm) {
+  //     setPagination(prev => ({ ...prev, currentPage: 1 }));
+  //   }
+  // }, [selectedState, selectedLga, selectedProject, searchTerm]);
+
+  {useEffect(() => { 
+      setPagination(prev => ({     ...prev,     currentPage: 1,   })); 
+    }, [selectedState, selectedLga, selectedProject, searchTerm]);
+  }
+
   useEffect(() => {
-    if (selectedState || selectedLga || selectedProject || searchTerm) {
-      setPagination(prev => ({ ...prev, currentPage: 1 }));
-    }
-  }, [selectedState, selectedLga, selectedProject, searchTerm]);
+  console.log("selectedState:", selectedState);
+}, [selectedState]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -276,6 +287,7 @@ const MSPSTable = () => {
         setAllMsps(prev => prev.filter(m => m.id !== selectedMsp.id));
         setDisplayedMsps(prev => prev.filter(m => m.id !== selectedMsp.id));
         setDeleteModalOpen(false);
+        setError(null);
       } else {
         throw new Error(response.data?.message || 'Failed to delete MSP');
       }
@@ -328,7 +340,7 @@ const MSPSTable = () => {
             email,
           },
           projectId: editModalSelectedProject,
-          project_info: {
+          projects: {
             projectName: projectObj?.name || 'N/A'
           },
           hub: {
@@ -391,11 +403,10 @@ const MSPSTable = () => {
         phoneNumber,
         email,
         projectId: modalSelectedProject,
-        hub: userLgaId,
       };
       
       // Include state and lga based on role
-      if (userRole === 'ADMIN' || userRole === 'National Coordinator' || userRole === 'Community Lead') {
+      if (userRole === 'ADMIN' || userRole === 'National Coordinator') {
         payload.state = modalSelectedState;
         payload.lga = modalSelectedLga;
       } else if (userRole === 'State Coordinator') {
@@ -403,17 +414,25 @@ const MSPSTable = () => {
         payload.lga = modalSelectedLga;
       } else if (userRole === 'Community Lead') {
         payload.state = userStateId;
+        payload.lga = userLgaId;
       }
       
       const response = await api.post('/msps', payload);
       
       if (response.status >= 200 && response.status < 300) {
-        const mspsResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/msps`);
+        // Refresh the list
+        const mspsResponse = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/msps`, {
+          params: {
+            page: pagination.currentPage,
+            per_page: pagination.perPage,
+          }
+        });
         const newMsps = Array.isArray(mspsResponse.data.data) ? mspsResponse.data.data : [];
         
         setAllMsps(newMsps);
         setDisplayedMsps(newMsps);
         handleCloseModal();
+        setError(null);
       } else {
         throw new Error(response.data?.message || 'Failed to add MSP');
       }
@@ -441,19 +460,18 @@ const MSPSTable = () => {
       <div className="card">
         <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
           <h5 className="card-title mb-3 mb-md-0">Mechanized Service Providers</h5>
-          {(userRole === 'Community Lead' &&
-          <button
-            className="btn btn-primary"
-            onClick={() => setIsModalOpen(true)}
-            disabled={loadingMsps}
-          >
-            {/* {loadingMsps ? 'Loading...' : 'Add MSP'} */}
-            Add MSP
-          </button>
+          {(userRole === 'Community Lead' || userRole === 'National Coordinator') && (
+            <button
+              className="btn btn-primary"
+              onClick={() => setIsModalOpen(true)}
+              disabled={loadingMsps}
+            >
+              Add MSP
+            </button>
           )}
         </div>
         <div className="card-body">
-          {/* Filter and Search Section - Made responsive */}
+          {/* Filter and Search Section */}
           <div className="row mb-4 g-3">
             {(userRole === 'ADMIN' || userRole === 'National Coordinator') && (
               <div className="col-12 col-md-6 col-lg-3">
@@ -587,12 +605,9 @@ const MSPSTable = () => {
                           <td>{`${msp.users?.firstName || ''} ${msp.users?.lastName || ''}`}</td>
                           <td>{msp.users?.phoneNumber || 'N/A'}</td>
                           <td>
-                            {states.find(s => s.id === msp.hub?.state)?.name || 'N/A'}
+                            {msp.hub?.states?.stateName ||  states.find(s => s.id.toString() === msp.hub?.state?.toString())?.name ||  'N/A'}
                           </td>
-                          {/* <td>
-                            {lgas.find(l => l.id === msp.hub?.lga)?.name || 'N/A'}
-                          </td> */}
-                          <td>{msp.hub?.lgas?.lgaName || 'N/A'}</td>
+                          <td>{msp.hub?.lgas?.lgaName ||  lgas.find(l => l.id.toString() === msp.hub?.lga?.toString())?.name ||  'N/A'}</td>
                           <td>
                             {msp.projects?.projectName || 'N/A'}
                           </td>
@@ -606,24 +621,24 @@ const MSPSTable = () => {
                                 <Icon icon="iconamoon:eye-light" width={16} />
                               </button>
 
-                               {(userRole === 'National Coordinator') && 
-                               <>
-                              <button
-                                className="w-32-px h-32-px me-2 bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                onClick={() => handleEdit(msp)}
-                                title="Edit"
-                              >
-                                <Icon icon="lucide:edit" width={16} />
-                              </button>
-                              <button
-                                className="w-32-px h-32-px bg-danger-light text-danger-600 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                onClick={() => handleDelete(msp)}
-                                title="Delete"
-                              >
-                                <Icon icon="mingcute:delete-2-line" width={16} />
-                              </button>
-                              </>
-                               }
+                              {(userRole === 'National Coordinator') && (
+                                <>
+                                  <button
+                                    className="w-32-px h-32-px me-2 bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                    onClick={() => handleEdit(msp)}
+                                    title="Edit"
+                                  >
+                                    <Icon icon="lucide:edit" width={16} />
+                                  </button>
+                                  <button
+                                    className="w-32-px h-32-px bg-danger-light text-danger-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                    onClick={() => handleDelete(msp)}
+                                    title="Delete"
+                                  >
+                                    <Icon icon="mingcute:delete-2-line" width={16} />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -720,7 +735,6 @@ const MSPSTable = () => {
         </div>
       </div>
 
-      {/* Modals - Made responsive */}
       {/* Add MSP Modal */}
       {isModalOpen && (
         <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
@@ -815,6 +829,7 @@ const MSPSTable = () => {
                       )}
                     </div>
                   )}
+                  
                   {(userRole === 'ADMIN' || userRole === 'National Coordinator' || userRole === 'State Coordinator') && (
                     <div className="mb-3">
                       <label htmlFor="lga" className="form-label">Hub</label>
@@ -835,6 +850,7 @@ const MSPSTable = () => {
                       </select>
                     </div>
                   )}
+                  
                   <div className="mb-3">
                     <label htmlFor="project" className="form-label">Project</label>
                     {loadingProjects ? (
@@ -927,19 +943,19 @@ const MSPSTable = () => {
                 <div className="mb-3">
                   <label className="form-label">State</label>
                   <p className="form-control-static">
-                    {states.find(s => s.id === selectedMsp?.hub?.state)?.name || 'N/A'}
+                    {selectedMsp?.hub?.states?.stateName || 'N/A'}
                   </p>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Hub</label>
                   <p className="form-control-static">
-                    {lgas.find(l => l.id === selectedMsp?.hub?.lga)?.name || 'N/A'}
+                    {selectedMsp?.hub?.lgas?.lgaName || 'N/A'}
                   </p>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Project</label>
                   <p className="form-control-static">
-                    {selectedMsp?.project_info?.projectName || 'N/A'}
+                    {selectedMsp?.projects?.projectName || 'N/A'}
                   </p>
                 </div>
                 <div className="mb-3">
@@ -1053,6 +1069,7 @@ const MSPSTable = () => {
                       </select>
                     </div>
                   )}
+                  
                   {(userRole === 'ADMIN' || userRole === 'National Coordinator' || userRole === 'State Coordinator') && (
                     <div className="mb-3">
                       <label htmlFor="editLga" className="form-label">Hub</label>
@@ -1073,6 +1090,7 @@ const MSPSTable = () => {
                       </select>
                     </div>
                   )}
+                  
                   <div className="mb-3">
                     <label htmlFor="editProject" className="form-label">Project</label>
                     <select
