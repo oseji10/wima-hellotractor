@@ -321,6 +321,15 @@ const MasterLayout = ({ children }) => {
             <span>Security & Safeguarding</span>
           </Link>
         </li>,
+         <li key="security-and-safeguarding">
+          <Link href="/dashboard/gotract-applications">
+            <Icon
+              icon="jam:write-f"
+              className="menu-icon"
+            />
+            <span>GoTract Applications</span>
+          </Link>
+        </li>,
         // <li key="bookings">
         //   <Link href="/dashboard/transactions">
         //     <Icon
