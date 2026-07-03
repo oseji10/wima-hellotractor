@@ -348,7 +348,7 @@ const GoTractApplicationsTable = () => {
                 <tr>
                   <th scope="col">SN</th>
                   <th scope="col">LGA</th>
-                  <th scope="col">Total</th>
+                  <th scope="col">Applications Received</th>
                   <th scope="col">Approved</th>
                   <th scope="col" style={{ minWidth: 200 }}>Progress to target</th>
                 </tr>
@@ -357,7 +357,7 @@ const GoTractApplicationsTable = () => {
                 {pagedLgas.length > 0 ? (
                   pagedLgas.map((row, i) => {
                     const target = row.target || stats?.targetPerLga || 40;
-                    const pct = target ? Math.min(100, Math.round((num(row.approved) / target) * 100)) : 0;
+                    const pct = target ? Math.min(100, Math.round((num(row.total) / target) * 100)) : 0;
                     return (
                       <tr key={row.lga}>
                         <td>{(lgaPage - 1) * LGA_PER_PAGE + i + 1}</td>
