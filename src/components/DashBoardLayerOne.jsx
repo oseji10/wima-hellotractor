@@ -23,24 +23,23 @@ const DashBoardLayerOne = () => {
       <UnitCountOne />
 
       <section className="row gy-4 mt-1">
-        {/* SalesStatisticOne */}
-        <SalesStatisticOne />
+        {role !== "GOTRACT PARTNER" && (
+          <>
+            {/* SalesStatisticOne */}
+            <SalesStatisticOne />
 
-        {/* TotalSubscriberOne */}
-        <TotalSubscriberOne />
+            {/* TotalSubscriberOne */}
+            <TotalSubscriberOne />
 
-        {/* UsersOverviewOne */}
-        <UsersOverviewOne />
+            {/* UsersOverviewOne */}
+            <UsersOverviewOne />
+          </>
+        )}
 
         {/* LatestRegisteredOne (only visible to specific roles) */}
         {(role === "National Coordinator" ||
           role === "SUPER ADMIN" ||
           role === "ADMIN") && <LatestRegisteredOne />}
-
-        {/* Optional components */}
-        {/* <TopPerformerOne /> */}
-        {/* <TopCountries /> */}
-        {/* <GeneratedContent /> */}
       </section>
     </>
   );

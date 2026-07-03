@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import dynamic from "next/dynamic";
 import api from '../../../lib/api';
+import { getRole } from "../../../lib/auth";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
@@ -12,6 +13,8 @@ const TotalSubscriberOne = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const role = getRole();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -133,6 +136,11 @@ const TotalSubscriberOne = () => {
     name: 'Sales',
     data: seriesData,
   }];
+
+    // Hidden from government officials
+  if (role === "GOTRACT PARTNER") {
+    return null;
+  }
 
   if (loading) {
     return (

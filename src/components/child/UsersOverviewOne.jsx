@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import api from "../../../lib/api";
+import { getRole } from "../../../lib/auth";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
@@ -11,6 +12,7 @@ const UsersOverviewOne = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const role = getRole();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,6 +75,11 @@ const UsersOverviewOne = () => {
 
   const donutChartSeries = data.map((item) => item.total);
 
+    // Hidden from government officials
+  if (role === "GOTRACT PARTNER") {
+    return null;
+  }
+  
   if (loading) {
     return (
       <div className="col-xxl-3 col-xl-6">

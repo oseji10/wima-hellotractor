@@ -94,6 +94,7 @@ const StatCard = ({ icon, label, value, color }) => (
 const GoTractApplicationsTable = () => {
   const [applications, setApplications] = useState([]);
   const [stats, setStats] = useState(null);
+  const [userRole, setUserRole] = useState(null);
 
   const [selectedLga, setSelectedLga] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -146,6 +147,19 @@ const GoTractApplicationsTable = () => {
   };
   useEffect(() => {
     fetchStats();
+  }, []);
+
+  // Who's logged in? Government officials get read-only access.
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await api.get("/user");
+        setUserRole(res.data?.role ?? null);
+      } catch (e) {
+        console.error("Error fetching user role:", e);
+      }
+    };
+    fetchUser();
   }, []);
 
   // Keep the LGA analysis on a valid page when the data refreshes
@@ -305,6 +319,9 @@ const GoTractApplicationsTable = () => {
   const byStatus = stats?.byStatus || {};
   const num = (v) => Number(v || 0);
 
+  // Government officials can view/export but cannot approve or change status.
+  const canManage = userRole !== "GOTRACT PARTNER";
+
   const lgaRows = stats?.lgas || [];
   const lgaTotalPages = Math.max(1, Math.ceil(lgaRows.length / LGA_PER_PAGE));
   const pagedLgas = lgaRows.slice((lgaPage - 1) * LGA_PER_PAGE, lgaPage * LGA_PER_PAGE);
@@ -322,7 +339,7 @@ const GoTractApplicationsTable = () => {
       <div className="card mb-4">
         <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
           <h5 className="card-title mb-2 mb-md-0">Approvals by LGA</h5>
-          <span className="text-secondary text-sm">Target: {stats?.targetPerLga || 250} per LGA</span>
+          <span className="text-secondary text-sm">Target: {stats?.targetPerLga || 40} per LGA</span>
         </div>
         <div className="card-body">
           <div className="table-responsive">
@@ -339,7 +356,7 @@ const GoTractApplicationsTable = () => {
               <tbody>
                 {pagedLgas.length > 0 ? (
                   pagedLgas.map((row, i) => {
-                    const target = row.target || stats?.targetPerLga || 250;
+                    const target = row.target || stats?.targetPerLga || 40;
                     const pct = target ? Math.min(100, Math.round((num(row.approved) / target) * 100)) : 0;
                     return (
                       <tr key={row.lga}>
@@ -481,7 +498,7 @@ const GoTractApplicationsTable = () => {
             </div>
           ) : (
             <>
-              {selectedIds.length > 0 && (
+              {canManage && selectedIds.length > 0 && (
                 <div className="d-flex flex-wrap align-items-center gap-2 p-3 mb-3 bg-primary-light rounded">
                   <span className="fw-medium me-1">{selectedIds.length} selected</span>
                   <select
@@ -522,15 +539,17 @@ const GoTractApplicationsTable = () => {
                 <table className="table border-primary-table mb-0">
                   <thead>
                     <tr>
-                      <th scope="col" style={{ width: 36 }}>
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          checked={allOnPageSelected}
-                          onChange={toggleSelectAll}
-                          title="Select all on this page"
-                        />
-                      </th>
+                      {canManage && (
+                        <th scope="col" style={{ width: 36 }}>
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={allOnPageSelected}
+                            onChange={toggleSelectAll}
+                            title="Select all on this page"
+                          />
+                        </th>
+                      )}
                       <th scope="col">SN</th>
                       <th scope="col">Reference</th>
                       <th scope="col">Name</th>
@@ -546,15 +565,17 @@ const GoTractApplicationsTable = () => {
                   <tbody>
                     {applications.length > 0 ? (
                       applications.map((app, index) => (
-                        <tr key={app.id || index} className={selectedIds.includes(app.id) ? "table-active" : ""}>
-                          <td>
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              checked={selectedIds.includes(app.id)}
-                              onChange={() => toggleSelect(app.id)}
-                            />
-                          </td>
+                        <tr key={app.id || index} className={canManage && selectedIds.includes(app.id) ? "table-active" : ""}>
+                          {canManage && (
+                            <td>
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={selectedIds.includes(app.id)}
+                                onChange={() => toggleSelect(app.id)}
+                              />
+                            </td>
+                          )}
                           <td>{(page - 1) * perPage + index + 1}</td>
                           <td><span className="fw-medium text-primary-600">{app.reference_id || "N/A"}</span></td>
                           <td>{app.full_name || "N/A"}</td>
@@ -573,20 +594,22 @@ const GoTractApplicationsTable = () => {
                               >
                                 <Icon icon="iconamoon:eye-light" width={16} />
                               </button>
-                              <button
-                                className="w-32-px h-32-px bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                onClick={() => handleOpenStatus(app)}
-                                title="Update status"
-                              >
-                                <Icon icon="mdi:progress-check" width={16} />
-                              </button>
+                              {canManage && (
+                                <button
+                                  className="w-32-px h-32-px bg-success-light text-success-600 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                  onClick={() => handleOpenStatus(app)}
+                                  title="Update status"
+                                >
+                                  <Icon icon="mdi:progress-check" width={16} />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="11" className="text-center py-4">
+                        <td colSpan={canManage ? 11 : 10} className="text-center py-4">
                           No applications found matching your criteria
                         </td>
                       </tr>
@@ -790,13 +813,15 @@ const GoTractApplicationsTable = () => {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setViewModalOpen(false)}>Close</button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => { setViewModalOpen(false); handleOpenStatus(selected); }}
-                >
-                  Update Status
-                </button>
+                {canManage && (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => { setViewModalOpen(false); handleOpenStatus(selected); }}
+                  >
+                    Update Status
+                  </button>
+                )}
               </div>
             </div>
           </div>

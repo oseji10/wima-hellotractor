@@ -2,10 +2,13 @@
 import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
 import api from "../../../lib/api";
+import { getRole } from "../../../lib/auth";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 const SalesStatisticOne = () => {
+  const role = getRole();
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,8 +41,12 @@ const SalesStatisticOne = () => {
     return weeks;
   };
 
-  // === Fetch data ===
+  // === Fetch data (skipped for government officials) ===
   useEffect(() => {
+    if (role === "govt_official") {
+      setLoading(false);
+      return;
+    }
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -52,7 +59,7 @@ const SalesStatisticOne = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [role]);
 
   const formatCurrency = (amount) => `₦${amount?.toLocaleString() || "0"}`;
 
@@ -132,6 +139,11 @@ const SalesStatisticOne = () => {
   };
 
   const series = [{ name: "Transactions", data: seriesData }];
+
+  // Hidden from government officials
+  if (role === "GOTRACT PARTNER") {
+    return null;
+  }
 
   if (loading) {
     return (

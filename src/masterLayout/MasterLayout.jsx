@@ -412,7 +412,23 @@ const MasterLayout = ({ children }) => {
           </Link>
         </li>
       ];
-    // } else if (currentRole === 'National Coordinator') {
+    
+      } else if (currentRole === 'GOTRACT PARTNER') {
+      roleSpecificItems = [
+         <li key="security-and-safeguarding">
+          <Link href="/dashboard/gotract-applications">
+            <Icon
+              icon="jam:write-f"
+              className="menu-icon"
+            />
+            <span>GoTract Applications</span>
+          </Link>
+        </li>,
+        
+      ];
+    
+    
+      // } else if (currentRole === 'National Coordinator') {
     } else if (currentRole === 'National Coordinator 2') {
       roleSpecificItems = [
         <li key="hubs">
@@ -630,21 +646,22 @@ const MasterLayout = ({ children }) => {
       ];
     }
 
-       const commonItems2 = [
-        <li key="feedback">
-          <Link href="/dashboard/feedback">
-            <Icon icon="fluent-mdl2:feedback" className="menu-icon" />
-            <span>Feedback</span>
-          </Link>
-        </li>,
-      <li key="help">
-        <Link href="/dashboard/help">
-          <Icon icon="material-symbols:help-outline-rounded" className="menu-icon" />
-          <span>Help</span>
-        </Link>
-      </li>
-    ];
-    return [...commonItems, ...roleSpecificItems, ...commonItems2];
+    //    const commonItems2 = [
+    //     <li key="feedback">
+    //       <Link href="/dashboard/feedback">
+    //         <Icon icon="fluent-mdl2:feedback" className="menu-icon" />
+    //         <span>Feedback</span>
+    //       </Link>
+    //     </li>,
+    //   <li key="help">
+    //     <Link href="/dashboard/help">
+    //       <Icon icon="material-symbols:help-outline-rounded" className="menu-icon" />
+    //       <span>Help</span>
+    //     </Link>
+    //   </li>
+    // ];
+    return [...commonItems, ...roleSpecificItems];
+    //  return [...commonItems, ...roleSpecificItems, ...commonItems2];
   };
 
   // Render loading state
