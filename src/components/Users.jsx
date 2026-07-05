@@ -541,12 +541,15 @@ const UsersTable = () => {
                           <td>{user.phoneNumber || 'N/A'}</td>
                           <td>{user.user_role?.roleName || 'N/A'}</td>
                           <td>
-  {user?.state_coordinator?.state?.stateName ??
+  {/* {user?.state_coordinator?.state?.stateName ??
    user?.community_lead?.lga_info?.state?.stateName ??
-   "N/A"}
+   "N/A"} */}
+
+  {user.state_coordinator?.state?.stateName || user?.msp?.hub?.states?.stateName || states.find(s => s.id.toString() === user.state_coordinator?.state?.id?.toString())?.name ||  'N/A'}
+
 </td>
 
-                          <td>{user?.community_lead?.lga_info?.lgaName || 'N/A'}</td>
+                          <td>{user?.community_lead?.lga_info?.lgaName || user?.msp?.hub?.lga_info?.lgaName || 'N/A'}</td>
                           {/* <td>{user.status || 'N/A'}</td> */}
                           <td>
                             <div className="d-flex">

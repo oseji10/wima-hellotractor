@@ -101,6 +101,7 @@ const GoTractOversight = () => {
   const totalTarget = num(data.totalTarget);
   const approved = num(data.approved);
   const overallPct = totalTarget ? Math.min(100, Math.round((approved / totalTarget) * 100)) : 0;
+  const receivedPct = totalTarget ? Math.min(100, Math.round((num(data.total) / totalTarget) * 100)) : 0;
   const generated = data.generatedAt ? new Date(data.generatedAt) : null;
 
   return (
@@ -118,7 +119,7 @@ const GoTractOversight = () => {
             >
               <Icon icon="mdi:eye-outline" className="me-1" /> Read-only oversight
             </span>
-            <h4 className="mb-1 text-white fw-bold">GoTRACT Programme — Government Oversight</h4>
+            <h4 className="mb-1 text-white fw-bold">GoTRACT Programme — Oversight Dashboard</h4>
             <p className="mb-0" style={{ color: "rgba(255,255,255,0.85)" }}>
               Gombe Tractor Access &amp; Capacity Transformation Programme · Aggregate figures across all 11 LGAs
             </p>
@@ -141,9 +142,9 @@ const GoTractOversight = () => {
         <SummaryCard icon="mdi:percent-outline" label="Approval Rate" value={`${num(data.approvalRate)}%`} color="info" />
         <SummaryCard
           icon="mdi:target-arrow"
-          label="Progress to Target"
-          value={`${approved.toLocaleString()} / ${totalTarget.toLocaleString()}`}
-          sub={`${overallPct}% of statewide target`}
+          label="Applications vs Target"
+          value={`${num(data.total).toLocaleString()} / ${totalTarget.toLocaleString()}`}
+          sub={`${receivedPct}% of statewide target`}
           color="warning"
         />
       </div>

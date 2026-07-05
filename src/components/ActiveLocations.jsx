@@ -903,7 +903,7 @@ const ActiveLocationsTable = () => {
               <div className="modal-body">
                 <div className="mb-3">
                   <label className="form-label">Hub Name</label>
-                  <p className="form-control-static">{selectedLocation?.hubName || 'N/A'}</p>
+                  <p className="form-control-static">{selectedLocation?.lgas?.lgaName || 'N/A'}</p>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">State</label>
