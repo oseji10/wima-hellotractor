@@ -128,7 +128,7 @@ const SelectField = ({
   ctx, name, icon, placeholder, options,
 }: {
   ctx: FieldCtx; name: keyof FormState; icon: string; placeholder: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; disabled?: boolean }[];
 }) => {
   const err = errOf(ctx, name as string);
   return (
@@ -144,7 +144,7 @@ const SelectField = ({
         disabled={ctx.isSubmitting}
       >
         <option value=''>{placeholder}</option>
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        {options.map(o => <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>)}
       </select>
       <span className="input-highlight" />
       {err && <span className="field-error">{err}</span>}
@@ -210,6 +210,7 @@ const GoTractApplication = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [registrationData, setRegistrationData] = useState<any>(null);
   const [direction, setDirection] = useState<'next' | 'back'>('next');
+  const [lgaAvailability, setLgaAvailability] = useState<Record<string, { open: boolean; remaining: number | null }>>({});
 
   const router = useRouter();
 
@@ -223,6 +224,22 @@ const GoTractApplication = () => {
     if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) a--;
     return a;
   }, [formData.dateOfBirth]);
+
+  // Which LGAs are still accepting applications (capacity only).
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/gotract/lga-availability`);
+        const map: Record<string, { open: boolean; remaining: number | null }> = {};
+        (res.data?.data || []).forEach((r: any) => {
+          map[r.lga] = { open: !!r.open, remaining: r.remaining ?? null };
+        });
+        setLgaAvailability(map);
+      } catch {
+        // If this fails, all LGAs stay selectable; the server still enforces the cap.
+      }
+    })();
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -554,7 +571,11 @@ const GoTractApplication = () => {
                       <input className='form-input' value="Gombe State" disabled readOnly />
                     </div>
                     <SelectField ctx={ctx} name="lga" icon="mdi:city" placeholder="Select LGA"
-                      options={GOMBE_LGAS.map(l => ({ value: l, label: l }))} />
+                      options={GOMBE_LGAS.map(l => {
+                        const info = lgaAvailability[l];
+                        const open = info ? info.open : true;
+                        return { value: l, label: open ? l : `${l} (Full)`, disabled: !open };
+                      })} />
                   </div>
                   <TextField ctx={ctx} name="village" placeholder="Village / Community" icon="mdi:home-group" />
                 </div>
@@ -774,7 +795,7 @@ const GoTractApplication = () => {
             <div className="modal-header">
               <div className="modal-icon success-icon"><Icon icon="clarity:success-standard-line" /></div>
               <h2>Application Received!</h2>
-              {/* <p className="modal-subtitle">Your GoTRACT application has been submitted for screening.</p> */}
+              <p className="modal-subtitle">Your GoTRACT application has been submitted for screening.</p>
             </div>
             <div className="modal-body">
               {registrationData?.referenceId && (
