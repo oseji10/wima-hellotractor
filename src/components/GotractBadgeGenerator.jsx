@@ -198,7 +198,7 @@ const GoTractBadgeGenerator = () => {
                   <div className="badge-title">GoTRACT</div>
                   <QRCodeCanvas value={b.token} size={110} level="M" includeMargin={false} />
                   <div className="badge-serial">{b.serial}</div>
-                  <div className="badge-note">Meals &amp; Attendance</div>
+                  <div className="badge-note">-------------------</div>
                 </div>
               ))}
             </div>
