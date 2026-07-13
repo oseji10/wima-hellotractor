@@ -545,7 +545,7 @@ const UsersTable = () => {
    user?.community_lead?.lga_info?.state?.stateName ??
    "N/A"} */}
 
-  {user.state_coordinator?.state?.stateName || user?.msp?.hub?.states?.stateName || states.find(s => s.id.toString() === user.state_coordinator?.state?.id?.toString())?.name ||  'N/A'}
+  {user.state_coordinator?.state?.stateName || user?.gotract_partner?.state?.stateName || user?.msp?.hub?.states?.stateName ||  states.find(s => s.id.toString() === user.state_coordinator?.state?.id?.toString())?.name ||  'N/A'}
 
 </td>
 

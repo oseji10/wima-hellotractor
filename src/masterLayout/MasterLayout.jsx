@@ -322,7 +322,7 @@ const MasterLayout = ({ children }) => {
           </Link>
         </li>,
          <li key="security-and-safeguarding">
-          <Link href="/dashboard/gotract-applications">
+          <Link href="/dashboard/gotract-dashboard">
             <Icon
               icon="jam:write-f"
               className="menu-icon"
@@ -330,6 +330,25 @@ const MasterLayout = ({ children }) => {
             <span>GoTract Applications</span>
           </Link>
         </li>,
+        //     <li key="security-and-safeguarding">
+        //   <Link href="/dashboard/badge-generator">
+        //     <Icon
+        //       icon="jam:write-f"
+        //       className="menu-icon"
+        //     />
+        //     <span>Badge Generator</span>
+        //   </Link>
+        // </li>,
+       
+        //     <li key="security-and-safeguarding">
+        //   <Link href="/dashboard/accreditation">
+        //     <Icon
+        //       icon="jam:write-f"
+        //       className="menu-icon"
+        //     />
+        //     <span>GoTract Accreditation</span>
+        //   </Link>
+        // </li>,
         // <li key="bookings">
         //   <Link href="/dashboard/transactions">
         //     <Icon
