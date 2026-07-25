@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import api from "../../lib/api";
+import { useRouter } from "next/navigation";
 
 const MSPSTable = () => {
   // State management
@@ -45,6 +46,9 @@ const MSPSTable = () => {
   const [userStateId, setUserStateId] = useState(null);
   const [userLgaId, setUserLgaId] = useState(null);
 
+
+const router = useRouter();
+// ...
   // Fetch user role and stateId
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -460,7 +464,7 @@ const MSPSTable = () => {
       <div className="card">
         <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
           <h5 className="card-title mb-3 mb-md-0">Mechanized Service Providers</h5>
-          {(userRole === 'Community Lead' || userRole === 'National Coordinator') && (
+          {/* {(userRole === 'Community Lead' || userRole === 'National Coordinator' || userRole === 'ADMIN') && (
             <button
               className="btn btn-primary"
               onClick={() => setIsModalOpen(true)}
@@ -468,7 +472,21 @@ const MSPSTable = () => {
             >
               Add MSP
             </button>
-          )}
+          )} */}
+
+          <div className="d-flex gap-2">
+  {(userRole === 'ADMIN' || userRole === 'National Coordinator') && (
+    <button className="btn btn-outline-primary" onClick={() => router.push("/dashboard/cac-submissions")}>
+      <Icon icon="mdi:file-document-check-outline" className="me-1" />
+      Manage CAC Submissions
+    </button>
+  )}
+  {(userRole === 'Community Lead' || userRole === 'National Coordinator') && (
+    <button className="btn btn-primary" onClick={() => setIsModalOpen(true)} disabled={loadingMsps}>
+      Add MSP
+    </button>
+  )}
+</div>
         </div>
         <div className="card-body">
           {/* Filter and Search Section */}
@@ -749,6 +767,7 @@ const MSPSTable = () => {
                   disabled={isSubmitting}
                 ></button>
               </div>
+
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
                   <div className="row">
